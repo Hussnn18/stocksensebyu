@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from './context/AuthContext.jsx';
 import { 
   Boxes, 
   Truck, 
@@ -29,7 +31,8 @@ import {
   MailCheck,
   LogOut,
   UserCheck,
-  ChevronDown
+  ChevronDown,
+  LayoutDashboard
 } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:5001/api';
@@ -61,7 +64,10 @@ export default function App() {
   // Async status & Feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authNotification, setAuthNotification] = useState(null); // { type: 'success' | 'error' | 'info', message: string }
-  const [authenticatedUser, setAuthenticatedUser] = useState(null);
+  // Logged-in user lives in AuthContext so the dashboard (and a page reload) can see it.
+  const { user: authenticatedUser, login, logout } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
 
@@ -258,7 +264,7 @@ export default function App() {
         type: 'success',
         message: 'Identity verified successfully! Access granted.',
       });
-      setAuthenticatedUser({
+      login({
         name: resetEmail.split('@')[0],
         email: resetEmail,
         role: 'inventory_manager',
@@ -267,6 +273,7 @@ export default function App() {
       setTimeout(() => {
         setAuthModalOpen(false);
         setAuthNotification(null);
+        navigate('/dashboard');
       }, 1200);
     } catch (err) {
       setAuthNotification({
@@ -346,9 +353,10 @@ export default function App() {
         throw new Error(data.message || 'Login failed. Please check your credentials.');
       }
 
-      setAuthenticatedUser(data.user);
+      login(data.user);
       setAuthModalOpen(false);
       setAuthNotification(null);
+      navigate('/dashboard');
     } catch (err) {
       setAuthNotification({
         type: 'error',
@@ -360,8 +368,18 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    setAuthenticatedUser(null);
+    logout();
   };
+
+  // The app sends logged-out visitors to "/?auth=signin" so the sign-in modal opens straight away.
+  useEffect(() => {
+    const tab = searchParams.get('auth');
+    if (!tab) return;
+    setSearchParams({}, { replace: true });
+    if (authenticatedUser) navigate('/dashboard');
+    else handleOpenAuth(tab === 'signup' ? 'signup' : 'signin');
+    // Runs only when the query string changes.
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-blue-600 selection:text-white flex flex-col">
@@ -455,6 +473,18 @@ export default function App() {
                           </span>
                         </div>
                       </div>
+
+                      {/* Open the inventory dashboard */}
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          navigate('/dashboard');
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 mb-2 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span>Open dashboard</span>
+                      </button>
 
                       {/* Divider */}
                       <div className="border-t border-slate-100 mb-3"></div>
