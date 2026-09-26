@@ -302,16 +302,15 @@ export default function App() {
         throw new Error(data.message || 'Signup failed.');
       }
 
+      // Pre-fill email in Sign In tab and prompt user to log in
+      setSignInEmail(signUpEmail);
+      setSignInPassword('');
+      setSignUpPassword('');
+      setAuthTab('signin');
       setAuthNotification({
         type: 'success',
-        message: `Account created! Welcome email dispatched via Nodemailer.`,
+        message: 'Account created successfully! Welcome email sent. Please enter your password to log in.',
       });
-      setAuthenticatedUser(data.user);
-
-      setTimeout(() => {
-        setAuthModalOpen(false);
-        setAuthNotification(null);
-      }, 1500);
     } catch (err) {
       setAuthNotification({
         type: 'error',
@@ -322,16 +321,42 @@ export default function App() {
     }
   };
 
-  const handleSignInSubmit = (e) => {
+  const handleSignInSubmit = async (e) => {
     e.preventDefault();
-    if (!signInEmail) return;
+    if (!signInEmail || !signInPassword) {
+      setAuthNotification({ type: 'error', message: 'Email and password are required.' });
+      return;
+    }
 
-    setAuthenticatedUser({
-      name: signInEmail.split('@')[0] || 'Warehouse Lead',
-      email: signInEmail,
-      role: 'inventory_manager',
-    });
-    setAuthModalOpen(false);
+    setIsSubmitting(true);
+    setAuthNotification(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: signInEmail,
+          password: signInPassword,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Login failed. Please check your credentials.');
+      }
+
+      setAuthenticatedUser(data.user);
+      setAuthModalOpen(false);
+      setAuthNotification(null);
+    } catch (err) {
+      setAuthNotification({
+        type: 'error',
+        message: err.message || 'Invalid email or password.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleLogout = () => {
