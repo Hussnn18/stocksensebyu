@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { DashboardView } from './components/DashboardView';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from './context/AuthContext.jsx';
+import { API_BASE_URL } from './lib/constants';
 import {
   Boxes, 
   Truck, 
@@ -34,15 +36,6 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-const TOKEN_KEY = 'stocksense_token';
-
-// DashboardView uses 'inventory_manager' / 'warehouse_staff'; the database stores 'manager' / 'staff'
-const toDashboardUser = (user) => ({
-  ...user,
-  role: user.role === 'manager' ? 'inventory_manager' : 'warehouse_staff',
-});
-
 export default function App() {
   // Navigation / Modal States
   const [activeModuleId, setActiveModuleId] = useState('receipts');
@@ -70,27 +63,16 @@ export default function App() {
   // Async status & Feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authNotification, setAuthNotification] = useState(null); // { type: 'success' | 'error' | 'info', message: string }
-  const [authenticatedUser, setAuthenticatedUser] = useState(null);
+  // Logged-in user lives in AuthContext so the dashboard (and a page reload) can see it.
+  const { user: authenticatedUser, login, logout } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
 
   // OTP reset step 3 (new password)
   const [resetToken, setResetToken] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-
-  // Restore the session after a page refresh
-  useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
-    fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => {
-        setAuthenticatedUser(data.user);
-        setShowDashboard(true);
-      })
-      .catch(() => localStorage.removeItem(TOKEN_KEY));
-  }, []);
 
 
   // 8 Core Operations (Matching Image 1 Grid)
@@ -404,12 +386,11 @@ export default function App() {
         throw new Error(data.message || 'Login failed. Please check your credentials.');
       }
 
-      localStorage.setItem(TOKEN_KEY, data.token);
-      setAuthenticatedUser(data.user);
+      login(data.user, data.token);
       setSignInPassword('');
       setAuthModalOpen(false);
       setAuthNotification(null);
-      setShowDashboard(true); // the brief: after login, go to the Inventory Dashboard
+      navigate('/dashboard'); // the brief: after login, go to the Inventory Dashboard
     } catch (err) {
       setAuthNotification({
         type: 'error',
@@ -421,20 +402,18 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    setAuthenticatedUser(null);
-    setShowDashboard(false);
+    logout();
   };
 
-  if (authenticatedUser && showDashboard) {
-    return (
-      <DashboardView
-        currentUser={toDashboardUser(authenticatedUser)}
-        onLogout={handleLogout}
-        onBackToLanding={() => setShowDashboard(false)}
-      />
-    );
-  }
+  // The app sends logged-out visitors to "/?auth=signin" so the sign-in modal opens straight away.
+  useEffect(() => {
+    const tab = searchParams.get('auth');
+    if (!tab) return;
+    setSearchParams({}, { replace: true });
+    if (authenticatedUser) navigate('/dashboard');
+    else handleOpenAuth(tab === 'signup' ? 'signup' : 'signin');
+    // Runs only when the query string changes.
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-blue-600 selection:text-white flex flex-col">
@@ -524,12 +503,13 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* Open the inventory dashboard */}
                       <button
                         onClick={() => {
-                          setShowDashboard(true);
                           setUserMenuOpen(false);
+                          navigate('/dashboard');
                         }}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 mb-3 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 mb-2 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer"
                       >
                         <LayoutDashboard className="w-4 h-4" />
                         <span>Open dashboard</span>
