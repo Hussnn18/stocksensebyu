@@ -1,135 +1,113 @@
-# StockSense — Frontend
+# StockSense
 
-The frontend for **StockSense**, an inventory management app. Built with React 19, Vite, and Tailwind CSS. Includes a public landing page (with sign-in) and an authenticated dashboard app for managing products, warehouses, and stock operations.
+A modular **Inventory Management System** that replaces manual registers and Excel sheets with one real-time app for **Inventory Managers** (incoming and outgoing stock) and **Warehouse Staff** (transfers, picking, shelving and counting).
 
-## Overview
+**Stack:** React 19 + Vite + Tailwind CSS · Node.js + Express · **MySQL 8** · JWT auth · Nodemailer (SMTP) for OTP email. No paid third-party APIs.
 
-StockSense's frontend is a single-page application with two distinct experiences:
+---
 
-- A **public landing page** (`/`) that markets the product and includes a sign-in/sign-up modal.
-- An **authenticated dashboard app** (everything else) for day-to-day inventory management — products, warehouses, stock movements, and operations like receipts, deliveries, transfers, and adjustments.
+## What it does
 
-It can run fully connected to the real backend (Express + MySQL) or in a **mock mode** that uses in-browser seed data, so the UI can be developed and demoed without any backend setup.
-
-## Tech Stack
-
-- **React 19** — UI library
-- **React Router v7** — client-side routing
-- **Vite** — dev server & build tool
-- **Tailwind CSS v4** — utility-first styling
-- **lucide-react** — icon set
-- **clsx** + **tailwind-merge** — conditional/merged class name handling
-- **canvas-confetti** — celebratory UI effects
-- **oxlint** — fast linting
-
-## Getting Started
-
-### Prerequisites
-- Node.js (LTS recommended)
-- The [backend](../backend) running locally, or use mock mode (see below)
-
-### Install
-```bash
-cd frontend
-npm install
-```
-
-### Configure environment
-Copy the example env file and adjust if needed:
-```bash
-cp .env.example .env
-```
-
-| Variable | Description |
+| Problem statement | In StockSense |
 |---|---|
-| `VITE_API_URL` | URL of the backend API (default: `http://localhost:5001/api`) |
-| `VITE_DATA_SOURCE` | Set to `mock` to run against browser-only seed data with no backend/MySQL required. Leave unset (or `api`) to use the real Express + MySQL API. |
+| Sign up / log in, OTP password reset, then the Inventory Dashboard | Passwords hashed with bcrypt, JWT sessions, 6-digit OTP by email (hashed, 10-minute expiry, 5 attempts, single use) |
+| Dashboard KPIs | Products in stock · Low / out of stock · Pending receipts · Pending deliveries · Internal transfers scheduled |
+| Dynamic filters | Document type, status, warehouse or location, product category, date |
+| Products | Create/update with name, SKU, category, unit of measure and optional initial stock; stock per location; categories; reordering rules |
+| **Receipts** | Create → add supplier and products → quantities → **Validate → stock increases** |
+| **Delivery orders** | Pick → Pack → **Validate → stock decreases**; refused if there isn't enough stock at the source |
+| **Internal transfers** | Warehouse → production floor, rack → rack, warehouse → warehouse; total unchanged, location updated |
+| **Stock adjustments** | Choose product and location → enter counted quantity → difference applied and logged |
+| Move history | Every change is a row in the stock ledger (who, when, from → to, quantity) |
+| Alerts, multi-warehouse, SKU search | Low-stock alerts with suggested reorder quantity, any number of warehouses and locations, global SKU search |
+| Settings, profile | Warehouses and locations (managers), My Profile, Logout |
 
-### Run the dev server
+**Roles:** everyone can create and process receipts, deliveries, transfers and adjustments. Only **Inventory Managers** can change products, categories, reorder rules, warehouses and locations. The API enforces this, not just the UI.
+
+## How stock moves
+
+Every stock change is a move **from one location to another**, including virtual locations (`Vendor`, `Customer`, `Inventory Loss`):
+
+| Document | From → To | Effect on stock |
+|---|---|---|
+| Receipt | Vendor → warehouse location | + quantity |
+| Delivery | warehouse location → Customer | − quantity |
+| Internal transfer | location → location | total unchanged |
+| Adjustment | location ↔ Inventory Loss | counted − recorded |
+
+Stock only changes on **Validate**. That one database transaction locks the source stock rows, refuses the whole document if any line is short (nothing is written), then updates `stock_quants` (balances) and inserts `stock_moves` (the ledger) together, so the two can never disagree.
+
+Documents go **Draft → Ready** (or **Waiting** when a delivery or transfer doesn't have the stock yet) **→ Done**, or **Canceled**. References are generated per type: `WH/IN/0001`, `WH/OUT/0001`, `WH/INT/0001`, `WH/ADJ/0001`.
+
+## Database
+
+MySQL 8, designed in MySQL Workbench: 12 tables and 3 views. Details are in [`database/README.md`](database/README.md).
+
+![StockSense ER diagram](database/eerDiagram.png)
+
+- **Stock:** `stock_quants` (current balance per product and location, `CHECK quantity ≥ 0`) and `stock_moves` (append-only ledger)
+- **Documents:** `operations`, `operation_lines`, `operation_sequences` (reference numbers, row-locked)
+- **Catalogue:** `products`, `categories`, `reorder_rules`
+- **Places:** `warehouses`, `locations`
+- **Accounts:** `users`, `password_otps`
+- **Views:** `v_product_stock` (on-hand + low/out state), `v_dashboard_kpis`, `v_move_history`
+
+## Run it locally
+
+**Needs:** Node.js 18+, MySQL 8 (MySQL Workbench is easiest).
+
+1. **Database.** In MySQL Workbench, run [`database/schema.sql`](database/schema.sql), then [`database/seed.sql`](database/seed.sql). This loads demo warehouses, products and documents. Re-running both resets the data.
+2. **Backend** (port 5001):
+   ```bash
+   cd backend
+   cp .env.example .env      # set DB_PASSWORD and JWT_SECRET (see comments in the file)
+   npm install
+   npm run dev
+   ```
+   It should print `Connected to MySQL database "stocksense"`. Leave the SMTP settings empty to get OTP emails in a free Ethereal test inbox (the code is also shown on screen in development), or add a Gmail app password to send real email.
+3. **Frontend** (port 5173), in a second terminal:
+   ```bash
+   cd frontend
+   cp .env.example .env
+   npm install
+   npm run dev
+   ```
+4. Open **http://localhost:5173** and **Create an account** (choose Inventory Manager to try everything).
+
+No MySQL? Set `VITE_DATA_SOURCE=mock` in `frontend/.env` to run the frontend on a browser-only copy of the seed data. See [`frontend/README.md`](frontend/README.md).
+
+## Try the example from the problem statement
+
+After running the seed, Steel Rods 12mm starts at **77 kg**.
+
+1. **Receipts → New receipt:** into WH/Stock, 100 kg Steel Rods → Save as draft → **Validate** → **+100**
+2. **Internal Transfers → New transfer:** WH/Stock → WH/Production Floor, 100 kg → Save as draft → Mark as to do → **Validate** → total unchanged, location updated
+3. **Delivery Orders → New delivery:** ship from WH/Production Floor, 20 kg → Save as draft → Mark as to do → **Pick items** → **Pack items** → **Validate** → **−20**
+4. **Inventory Adjustment:** WH/Production Floor, Steel Rods, counted 3 kg less than recorded → **Apply** → **−3**
+5. **Move History** shows the four moves: +100, 0, −20, −3.
+
+The same flow runs automatically against the API:
+
 ```bash
-npm run dev
-```
-The app will be available at the local URL Vite prints in the terminal (typically `http://localhost:5173`).
-
-### Other scripts
-```bash
-npm run build     # production build
-npm run preview   # preview the production build locally
-npm run lint      # run oxlint
+cd backend
+node scripts/verify-flow.mjs     # backend must be running; writes real documents, so use demo data
 ```
 
-## Project Structure
+It checks every step above, plus that a delivery bigger than the stock is refused with nothing written.
+
+## Project structure
 
 ```
-frontend/
-├── src/
-│   ├── api/            # API client, HTTP helpers, and mock data layer
-│   │   ├── client.js    # Configured API client
-│   │   ├── http.js      # Low-level HTTP helpers
-│   │   ├── inventory.js # Inventory-related API calls
-│   │   ├── mock.js      # Mock mode entry point
-│   │   └── mockDb.js    # In-browser mock database
-│   ├── components/
-│   │   ├── app/          # Authenticated app shell — Sidebar, Topbar, AppLayout, etc.
-│   │   ├── ui/           # Reusable UI primitives — Button, Card, Dialog, Table, Toast, etc.
-│   │   └── ai/           # AI-related components
-│   ├── context/          # React context (e.g. AuthContext)
-│   ├── data/             # Static/seed inventory data
-│   ├── hooks/            # Custom hooks (useAsync, useDismiss, useElementWidth)
-│   ├── lib/              # Constants and utility functions
-│   ├── pages/
-│   │   ├── dashboard/     # Dashboard page
-│   │   ├── products/      # Product list, detail, categories, reorder rules
-│   │   ├── operations/     # Operation list, detail, form
-│   │   ├── moves/          # Move history
-│   │   └── settings/       # Warehouses, profile
-│   ├── App.jsx            # Public landing page
-│   ├── AppRoutes.jsx      # App-wide route definitions
-│   ├── App.css / index.css
-│   └── main.jsx           # App entry point
-├── public/                # Static assets
-├── index.html
-├── vite.config.js
-└── .oxlintrc.json
+backend/     Express API: routes → controllers → services (stock changes in transactions), JWT auth, Nodemailer
+database/    schema.sql, seed.sql, ER diagram, setup guide
+docs/api.md  Every endpoint, query parameter and response shape
+frontend/    React app: pages, app shell, UI components, API client (+ optional mock data)
+design/      Early clickable UI mockup
+plan.md      Planning notes: stack choices and why, schema, team split
 ```
 
-## Routes
+## Team
 
-| Path | Description |
-|---|---|
-| `/` | Public landing page with sign-in modal |
-| `/dashboard` | Main dashboard |
-| `/products` | Product list |
-| `/products/categories` | Product categories |
-| `/products/reorder-rules` | Reorder rule configuration |
-| `/products/:id` | Product detail |
-| `/operations/receipts` | Receipt operations |
-| `/operations/deliveries` | Delivery operations |
-| `/operations/transfers` | Internal transfer operations |
-| `/operations/adjustments` | Stock adjustments |
-| `/operations/new` | Create a new operation |
-| `/operations/:id` | View an operation |
-| `/operations/:id/edit` | Edit an operation |
-| `/moves` | Move history |
-| `/settings/warehouses` | Warehouse settings |
-| `/profile` | User profile |
-
-Everything except `/` requires being signed in — unauthenticated visits to any of these redirect back to the landing page.
-
-## Authentication
-
-Sign-in and sign-up happen through a modal on the landing page. Once authenticated, the user is routed into the dashboard app, which is wrapped in `AppLayout` (sidebar + topbar navigation). Auth state is managed via `AuthContext`.
-
-## Working Without a Backend (Mock Mode)
-
-Set `VITE_DATA_SOURCE=mock` in `.env` to run the app entirely on browser-only seed data (`src/data/inventoryData.js` + `src/api/mockDb.js`). This is useful for:
-- Frontend-only development when the backend isn't running
-- Quick demos without setting up MySQL
-- UI work that doesn't depend on real persisted data
-
-Leave the variable unset (or set it to `api`) to use the real Express + MySQL backend.
-
-## Notes
-- See the [backend README](../backend) for API setup instructions.
-- Icons come from `lucide-react`; keep new icon usage consistent with the existing set rather than introducing another icon library.
-- Styling uses Tailwind utility classes directly in components rather than separate CSS files, aside from `App.css` / `index.css` for global styles.
+- Husanpreet Singh ([@Hussnn18](https://github.com/Hussnn18))
+- Harshpreet Singh
+- Jashan Choudhary ([@jashanchoudhary778](https://github.com/jashanchoudhary778))
