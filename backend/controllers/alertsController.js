@@ -1,6 +1,6 @@
 import pool from '../config/db.js';
 import { ok } from '../utils/http.js';
-import { fetchStockRows } from '../services/productService.js';
+import { STOCK_STATE, fetchStockRows } from '../services/productService.js';
 
 /**
  * GET /api/alerts/low-stock  →  low / out stock rows + suggested_qty,
@@ -8,7 +8,7 @@ import { fetchStockRows } from '../services/productService.js';
  */
 export async function handleLowStock(req, res) {
   const rows = await fetchStockRows(pool, {
-    where: ["s.stock_state IN ('low', 'out')"],
+    where: [`${STOCK_STATE} IN ('low', 'out')`],
     orderBy: "FIELD(s.stock_state, 'out', 'low'), COALESCE(s.on_hand / NULLIF(s.min_qty, 0), 0), s.name, s.product_id",
     withSuggested: true,
   });

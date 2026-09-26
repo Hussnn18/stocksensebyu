@@ -2,7 +2,7 @@ import pool from '../config/db.js';
 import { HttpError, ok, throwIfInvalid } from '../utils/http.js';
 import { withTransaction } from '../utils/transaction.js';
 import { MAX_QTY, cleanText, containsPattern, isBlank, parseId, parseQty, queryText } from '../utils/validate.js';
-import { fetchStockRow, fetchStockRows, parseReorderRule, saveReorderRule } from '../services/productService.js';
+import { STOCK_STATE, fetchStockRow, fetchStockRows, parseReorderRule, saveReorderRule } from '../services/productService.js';
 import { createProduct } from '../services/stockService.js';
 
 const SKU_PATTERN = /^[A-Z0-9][A-Z0-9._/-]*$/;
@@ -78,10 +78,10 @@ export async function handleListProducts(req, res) {
 
   const stockState = queryText(req.query.stock_state);
   if (stockState === 'alert') {
-    where.push("s.stock_state IN ('low', 'out')");
+    where.push(`${STOCK_STATE} IN ('low', 'out')`);
   } else if (stockState) {
     if (!STOCK_STATES.includes(stockState)) fields.stock_state = 'Use ok, low, out or alert.';
-    where.push('s.stock_state = ?');
+    where.push(`${STOCK_STATE} = ?`);
     params.push(stockState);
   }
 

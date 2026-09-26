@@ -15,6 +15,11 @@ const STOCK_SELECT = `
     FROM v_product_stock s
     JOIN products p ON p.id = s.product_id`;
 
+// stock_state is computed inside the view, so its collation is whatever the connection that ran
+// schema.sql used (MySQL Workbench often differs from the app's). Comparing it to a string then
+// fails with "Illegal mix of collations"; an explicit COLLATE works with either setup.
+export const STOCK_STATE = 's.stock_state COLLATE utf8mb4_bin';
+
 export const ORDER_BY_NAME = 's.name, s.product_id';
 export const ORDER_BY_SEVERITY = "FIELD(s.stock_state, 'out', 'low', 'ok'), s.name, s.product_id";
 
