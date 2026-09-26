@@ -88,7 +88,9 @@ Files: [database/schema.sql](database/schema.sql), [database/seed.sql](database/
 ---
 
 ## 5. REST API (summary)
-- **Auth:** `POST /auth/signup`, `POST /auth/login`, `POST /auth/forgot-password` (sends OTP), `POST /auth/reset-password` (checks OTP)
+- **Auth (built, under `/api`):** `POST /auth/signup`, `POST /auth/login` (returns JWT), `GET /auth/me` (Bearer token), OTP reset: `POST /auth/send-otp` → `POST /auth/verify-otp` (returns a 10-minute reset token) → `POST /auth/reset-password`
+  - Responses use `{ "success": true|false, "message": "...", ...data }`. New endpoints should follow the same shape.
+  - Protect routes with `requireAuth` (and `requireRole('manager')` where needed) from `backend/middleware/auth.js`.
 - **Dashboard:** `GET /dashboard/kpis`, `GET /dashboard/operations?type=&status=&warehouse=&category=`
 - **Products:** CRUD `/products`, `GET /products?search=`, `GET /products/:id/stock` (stock per location), CRUD `/categories`, CRUD `/reorder-rules`
 - **Operations:** CRUD `/operations?type=receipt|delivery|internal|adjustment`, `POST /operations/:id/validate`, `POST /operations/:id/cancel`

@@ -1,6 +1,9 @@
 // Shared labels and colors. Status colors are the same on every screen:
 // Draft = grey, Waiting = amber, Ready = blue, Done = green, Canceled = red.
 
+// Express backend. Set VITE_API_URL in frontend/.env when the backend runs somewhere else.
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
 export const OPERATION_TYPES = {
   receipt: { label: 'Receipt', plural: 'Receipts', path: '/operations/receipts' },
   delivery: { label: 'Delivery', plural: 'Delivery Orders', path: '/operations/deliveries' },
