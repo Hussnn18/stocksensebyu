@@ -39,6 +39,18 @@ export const MOVE_TYPES = {
 
 export const UNITS = ['units', 'pcs', 'kg', 'g', 'm', 'L', 'box', 'can', 'roll'];
 
+/** Managers can also edit products, categories, reorder rules and warehouses (the API enforces it too). */
+export function isManager(user) {
+  return user?.role === 'manager' || user?.role === 'inventory_manager';
+}
+
+// Which locations each document type moves between (see docs/api.md).
+export const OPERATION_ROUTES = {
+  receipt: { source: 'vendor', dest: 'internal', partner: 'Supplier', sourceLabel: 'From', destLabel: 'Receive into' },
+  delivery: { source: 'internal', dest: 'customer', partner: 'Customer', sourceLabel: 'Ship from', destLabel: 'To' },
+  internal: { source: 'internal', dest: 'internal', partner: 'Reason', sourceLabel: 'From location', destLabel: 'To location' },
+};
+
 export function roleLabel(role) {
   if (role === 'manager' || role === 'inventory_manager') return 'Inventory Manager';
   if (role === 'staff' || role === 'warehouse_staff') return 'Warehouse Staff';

@@ -134,6 +134,8 @@ CREATE TABLE operations (
   created_by          INT UNSIGNED NULL,
   validated_by        INT UNSIGNED NULL,
   validated_at        DATETIME NULL,
+  picked_at           DATETIME NULL,                     -- deliveries: set by Pick
+  packed_at           DATETIME NULL,                     -- deliveries: set by Pack (required before Validate)
   created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT uq_operations_reference UNIQUE (reference),

@@ -1,15 +1,17 @@
+import { Link, useNavigate } from 'react-router-dom';
 import { ClipboardList } from 'lucide-react';
 import { StatusBadge, TypeChip } from '../ui/Badge';
 import { Table, TableSkeleton, Td, Th, Tr } from '../ui/Table';
 import { EmptyState } from '../ui/Skeleton';
 import { formatDate } from '../../lib/utils';
 
-/** Read-only list of operations (receipts, deliveries, transfers, adjustments). */
-export function OperationsTable({ rows, loading, showType = true, emptyText = 'No operations match these filters.' }) {
-  if (!rows) return <TableSkeleton rows={6} columns={showType ? 5 : 4} />;
+/** List of operations (receipts, deliveries, transfers, adjustments). Rows open the document. */
+export function OperationsTable({ rows, loading, showType = true, emptyText = 'No operations match these filters.', emptyAction }) {
+  const navigate = useNavigate();
+  if (!rows) return <TableSkeleton rows={6} columns={5} />;
   if (!rows.length) {
     return (
-      <EmptyState icon={ClipboardList} title="Nothing here">
+      <EmptyState icon={ClipboardList} title="Nothing here" action={emptyAction}>
         {emptyText}
       </EmptyState>
     );
@@ -21,7 +23,6 @@ export function OperationsTable({ rows, loading, showType = true, emptyText = 'N
         <thead>
           <tr>
             <Th>Reference</Th>
-            {showType && <Th>Type</Th>}
             <Th>Partner &amp; products</Th>
             <Th>From → To</Th>
             <Th>Scheduled</Th>
@@ -30,14 +31,22 @@ export function OperationsTable({ rows, loading, showType = true, emptyText = 'N
         </thead>
         <tbody>
           {rows.map((o) => (
-            <Tr key={o.id}>
-              <Td className="font-mono text-xs font-semibold text-slate-900">{o.reference}</Td>
-              {showType && (
-                <Td>
-                  <TypeChip type={o.type} />
-                </Td>
-              )}
-              <Td className="max-w-[260px]">
+            <Tr key={o.id} onClick={() => navigate(`/operations/${o.id}`)}>
+              <Td>
+                <Link
+                  to={`/operations/${o.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-mono text-xs font-semibold text-slate-900 hover:text-blue-600"
+                >
+                  {o.reference}
+                </Link>
+                {showType && (
+                  <div className="mt-0.5">
+                    <TypeChip type={o.type} />
+                  </div>
+                )}
+              </Td>
+              <Td className="max-w-[240px]">
                 <div className="truncate font-semibold text-slate-900">
                   {o.partner_name || <span className="font-medium text-slate-400">Stock rebalancing</span>}
                 </div>
@@ -45,10 +54,10 @@ export function OperationsTable({ rows, loading, showType = true, emptyText = 'N
                   {o.products.join(', ')}
                 </div>
               </Td>
-              <Td className="text-xs text-slate-600">
+              <Td className="max-w-[210px] text-xs whitespace-normal text-slate-600">
                 {o.source_location}
                 <span className="mx-1.5 text-slate-300">→</span>
-                {o.dest_location}
+                <span className="whitespace-nowrap">{o.dest_location}</span>
               </Td>
               <Td className="tabular-nums text-slate-500">{formatDate(o.scheduled_date)}</Td>
               <Td>

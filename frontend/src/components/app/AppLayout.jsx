@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { getDashboardKpis, getLowStock } from '../../api/inventory';
@@ -22,7 +23,7 @@ export function AppLayout() {
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { data: kpis } = useAsync(getDashboardKpis);
+  const { data: kpis, error: serverError, reload } = useAsync(getDashboardKpis);
   const { data: alerts } = useAsync(getLowStock);
 
   useEffect(() => {
@@ -54,6 +55,18 @@ export function AppLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onToggleSidebar={toggleSidebar} alerts={alerts} />
         <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {serverError && (
+            <div role="alert" className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              <AlertCircle className="size-4 shrink-0 text-rose-600" />
+              <p className="flex-1">
+                {serverError.message} Data on this page can’t load until it’s back. (Start the backend and MySQL, or run the frontend with
+                VITE_DATA_SOURCE=mock.)
+              </p>
+              <button type="button" onClick={reload} className="font-bold text-rose-700 hover:text-rose-900 cursor-pointer">
+                Retry
+              </button>
+            </div>
+          )}
           <Outlet />
         </main>
       </div>
