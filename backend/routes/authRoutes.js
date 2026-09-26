@@ -1,12 +1,24 @@
 import express from 'express';
-import { handleSendOtp, handleVerifyOtp, handleSignUp, handleSignIn } from '../controllers/authController.js';
+import {
+  handleSendOtp,
+  handleVerifyOtp,
+  handleResetPassword,
+  handleSignUp,
+  handleSignIn,
+  handleGetMe,
+} from '../controllers/authController.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Routes
-router.post('/send-otp', handleSendOtp);
-router.post('/verify-otp', handleVerifyOtp);
+// Account
 router.post('/signup', handleSignUp);
 router.post('/login', handleSignIn);
+router.get('/me', requireAuth, handleGetMe);
+
+// OTP password reset: send code → verify code → set new password
+router.post('/send-otp', handleSendOtp);
+router.post('/verify-otp', handleVerifyOtp);
+router.post('/reset-password', handleResetPassword);
 
 export default router;

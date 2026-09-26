@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { 
+import React, { useState, useEffect } from 'react';
+import { DashboardView } from './components/DashboardView';
+import {
   Boxes, 
   Truck, 
   Layers, 
@@ -29,10 +30,18 @@ import {
   MailCheck,
   LogOut,
   UserCheck,
-  ChevronDown
+  ChevronDown,
+  LayoutDashboard
 } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const TOKEN_KEY = 'stocksense_token';
+
+// DashboardView uses 'inventory_manager' / 'warehouse_staff'; the database stores 'manager' / 'staff'
+const toDashboardUser = (user) => ({
+  ...user,
+  role: user.role === 'manager' ? 'inventory_manager' : 'warehouse_staff',
+});
 
 export default function App() {
   // Navigation / Modal States
@@ -63,6 +72,25 @@ export default function App() {
   const [authNotification, setAuthNotification] = useState(null); // { type: 'success' | 'error' | 'info', message: string }
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
+
+  // OTP reset step 3 (new password)
+  const [resetToken, setResetToken] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Restore the session after a page refresh
+  useEffect(() => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+    fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((data) => {
+        setAuthenticatedUser(data.user);
+        setShowDashboard(true);
+      })
+      .catch(() => localStorage.removeItem(TOKEN_KEY));
+  }, []);
 
 
   // 8 Core Operations (Matching Image 1 Grid)
@@ -190,6 +218,9 @@ export default function App() {
     setOtpInput('');
     setEmailPreviewUrl(null);
     setDemoOtpCode(null);
+    setResetToken(null);
+    setNewPassword('');
+    setConfirmPassword('');
     setAuthNotification(null);
     setAuthModalOpen(true);
   };
@@ -218,10 +249,7 @@ export default function App() {
       setOtpStep(2);
       if (data.previewUrl) setEmailPreviewUrl(data.previewUrl);
       if (data.demoCode) setDemoOtpCode(data.demoCode);
-      setAuthNotification({
-        type: 'success',
-        message: `Verification code sent via Nodemailer to ${resetEmail}`,
-      });
+      setAuthNotification({ type: 'success', message: data.message });
     } catch (err) {
       setAuthNotification({
         type: 'error',
@@ -254,25 +282,58 @@ export default function App() {
         throw new Error(data.message || 'Invalid or expired OTP code.');
       }
 
-      setAuthNotification({
-        type: 'success',
-        message: 'Identity verified successfully! Access granted.',
-      });
-      setAuthenticatedUser({
-        name: resetEmail.split('@')[0],
-        email: resetEmail,
-        role: 'inventory_manager',
-      });
-
-      setTimeout(() => {
-        setAuthModalOpen(false);
-        setAuthNotification(null);
-      }, 1200);
+      // Code is correct: move to step 3 to choose a new password
+      setResetToken(data.resetToken);
+      setOtpStep(3);
+      setAuthNotification(null);
     } catch (err) {
       setAuthNotification({
         type: 'error',
         message: err.message || 'Verification failed. Try again.',
       });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      setAuthNotification({ type: 'error', message: 'Password must be at least 8 characters.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setAuthNotification({ type: 'error', message: 'The two passwords do not match.' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setAuthNotification(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resetToken, password: newPassword }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Could not update the password.');
+      }
+
+      // Back to sign in with the email filled in
+      setSignInEmail(resetEmail);
+      setSignInPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetToken(null);
+      setOtpInput('');
+      setOtpStep(1);
+      setAuthTab('signin');
+      setAuthNotification({ type: 'success', message: data.message });
+    } catch (err) {
+      setAuthNotification({ type: 'error', message: err.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -307,10 +368,7 @@ export default function App() {
       setSignInPassword('');
       setSignUpPassword('');
       setAuthTab('signin');
-      setAuthNotification({
-        type: 'success',
-        message: 'Account created successfully! Welcome email sent. Please enter your password to log in.',
-      });
+      setAuthNotification({ type: 'success', message: data.message });
     } catch (err) {
       setAuthNotification({
         type: 'error',
@@ -346,9 +404,12 @@ export default function App() {
         throw new Error(data.message || 'Login failed. Please check your credentials.');
       }
 
+      localStorage.setItem(TOKEN_KEY, data.token);
       setAuthenticatedUser(data.user);
+      setSignInPassword('');
       setAuthModalOpen(false);
       setAuthNotification(null);
+      setShowDashboard(true); // the brief: after login, go to the Inventory Dashboard
     } catch (err) {
       setAuthNotification({
         type: 'error',
@@ -360,8 +421,20 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem(TOKEN_KEY);
     setAuthenticatedUser(null);
+    setShowDashboard(false);
   };
+
+  if (authenticatedUser && showDashboard) {
+    return (
+      <DashboardView
+        currentUser={toDashboardUser(authenticatedUser)}
+        onLogout={handleLogout}
+        onBackToLanding={() => setShowDashboard(false)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-blue-600 selection:text-white flex flex-col">
@@ -391,7 +464,6 @@ export default function App() {
             <a href="#scoping" className="hover:text-blue-600 transition-colors">Assessment</a>
             <a href="#flow" className="hover:text-blue-600 transition-colors">How It Works</a>
             <a href="#features" className="hover:text-blue-600 transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-blue-600 transition-colors">Pricing</a>
           </nav>
 
           {/* Action buttons (Far Right: Circular Logo Popup OR Login / Get Started) */}
@@ -404,7 +476,7 @@ export default function App() {
                   className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm flex items-center justify-center shadow-md shadow-blue-600/20 hover:ring-4 hover:ring-blue-500/20 transition-all cursor-pointer relative select-none"
                   title="Open user profile menu"
                 >
-                  <span>{authenticatedUser.name ? authenticatedUser.name[0].toUpperCase() : 'H'}</span>
+                  <span>{authenticatedUser.name ? authenticatedUser.name[0].toUpperCase() : '?'}</span>
                   <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white absolute bottom-0 right-0"></span>
                 </button>
 
@@ -422,14 +494,14 @@ export default function App() {
                       {/* Top User Info */}
                       <div className="flex items-center gap-3.5 mb-4">
                         <div className="w-11 h-11 rounded-full bg-blue-600 text-white font-black text-base flex items-center justify-center shadow-inner shrink-0 uppercase">
-                          {authenticatedUser.name ? authenticatedUser.name[0].toUpperCase() : 'H'}
+                          {authenticatedUser.name ? authenticatedUser.name[0].toUpperCase() : '?'}
                         </div>
                         <div className="overflow-hidden">
                           <div className="font-extrabold text-slate-900 text-sm truncate capitalize">
-                            {authenticatedUser.name || 'Harsh'}
+                            {authenticatedUser.name}
                           </div>
                           <div className="text-xs text-slate-500 truncate font-normal">
-                            {authenticatedUser.email || 'harshelectrotrader77@gmail.com'}
+                            {authenticatedUser.email}
                           </div>
                         </div>
                       </div>
@@ -443,11 +515,7 @@ export default function App() {
                           <div className="flex items-center gap-1.5 text-blue-700 font-extrabold text-sm">
                             <UserCheck className="w-4 h-4 text-blue-600 shrink-0" />
                             <span className="capitalize">
-                              {authenticatedUser.role === 'manager' || authenticatedUser.role === 'inventory_manager'
-                                ? 'Manager'
-                                : authenticatedUser.role === 'staff'
-                                ? 'Warehouse Staff'
-                                : 'Operations Lead'}
+                              {authenticatedUser.role === 'manager' ? 'Inventory Manager' : 'Warehouse Staff'}
                             </span>
                           </div>
                           <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
@@ -455,6 +523,17 @@ export default function App() {
                           </span>
                         </div>
                       </div>
+
+                      <button
+                        onClick={() => {
+                          setShowDashboard(true);
+                          setUserMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 mb-3 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all cursor-pointer"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span>Open dashboard</span>
+                      </button>
 
                       {/* Divider */}
                       <div className="border-t border-slate-100 mb-3"></div>
@@ -566,29 +645,6 @@ export default function App() {
             </div>
           </div>
 
-        </div>
-      </section>
-
-      {/* 3. TRUSTED BY LOGOS (Matching Screenshot 1 top client strip) */}
-      <section className="py-7 bg-white border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-xs font-bold uppercase tracking-widest text-slate-400 mb-5">
-            TRUSTED BY 800,000 CLIENTS & WAREHOUSES WORLDWIDE
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-4 items-center justify-items-center opacity-80 text-sm font-bold text-slate-700">
-            <span className="text-red-500 font-black text-base">airbnb</span>
-            <span className="text-slate-800 font-extrabold flex items-center gap-1">
-              <span className="w-2 h-2 bg-orange-600 rotate-45 inline-block"></span> databricks
-            </span>
-            <span className="text-amber-500 font-bold">☁ cloudflare</span>
-            <span className="text-slate-900 font-mono font-black text-base">scale</span>
-            <span className="text-slate-800 font-semibold flex items-center gap-1">
-              <span className="w-2.5 h-2.5 bg-blue-600 inline-block"></span> Microsoft
-            </span>
-            <span className="text-emerald-600 font-bold">● grammarly</span>
-            <span className="text-green-600 font-bold font-serif italic">bambooHR®</span>
-            <span className="text-slate-900 font-black tracking-tight">shutterstock</span>
-          </div>
         </div>
       </section>
 
@@ -875,7 +931,9 @@ export default function App() {
                 <p className="text-xs sm:text-sm text-slate-500 font-normal mb-7">
                   {authTab === 'signin' && 'Your work, your team, your flow — all in one place.'}
                   {authTab === 'signup' && 'Start digitizing your inventory & warehouse flow in seconds.'}
-                  {authTab === 'otp' && 'Enter your email to receive a 6-digit verification code.'}
+                  {authTab === 'otp' && otpStep === 1 && 'Enter your email to receive a 6-digit verification code.'}
+                  {authTab === 'otp' && otpStep === 2 && 'Enter the 6-digit code from your email.'}
+                  {authTab === 'otp' && otpStep === 3 && 'Choose a new password for your account.'}
                 </p>
 
                 {/* Top Notification Alert (Errors or Step 1 Confirmation) */}
@@ -965,7 +1023,6 @@ export default function App() {
                       >
                         <option value="manager">Inventory Manager (Approvals & Reordering)</option>
                         <option value="staff">Warehouse Staff (Floor Picking & Transfers)</option>
-                        <option value="admin">Operations Lead (Full Workspace Access)</option>
                       </select>
                     </div>
 
@@ -973,9 +1030,10 @@ export default function App() {
                       <input
                         type="password"
                         required
+                        minLength={8}
                         value={signUpPassword}
                         onChange={(e) => setSignUpPassword(e.target.value)}
-                        placeholder="Create secure password"
+                        placeholder="Create a password (8+ characters)"
                         className="w-full px-4 py-3 text-sm border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white placeholder:text-slate-400"
                       />
                     </div>
@@ -1028,6 +1086,45 @@ export default function App() {
                               <Mail className="w-4 h-4" />
                               <span>Send 6-digit OTP</span>
                             </>
+                          )}
+                        </button>
+                      </form>
+                    ) : otpStep === 3 ? (
+                      <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                        <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Code verified for <strong>{resetEmail}</strong>.</span>
+                        </div>
+                        <input
+                          type="password"
+                          required
+                          minLength={8}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="New password (8+ characters)"
+                          className="w-full px-4 py-3 text-sm border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white placeholder:text-slate-400"
+                        />
+                        <input
+                          type="password"
+                          required
+                          minLength={8}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Confirm new password"
+                          className="w-full px-4 py-3 text-sm border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white placeholder:text-slate-400"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full bg-slate-950 hover:bg-black text-white font-semibold text-sm py-3.5 rounded-full shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Updating password...</span>
+                            </>
+                          ) : (
+                            <span>Update password</span>
                           )}
                         </button>
                       </form>
@@ -1104,7 +1201,7 @@ export default function App() {
                               <span>Verifying code...</span>
                             </>
                           ) : (
-                            <span>Verify & Grant Access</span>
+                            <span>Verify code</span>
                           )}
                         </button>
                       </form>

@@ -44,7 +44,9 @@ const createTransporter = async () => {
   }
 };
 
-createTransporter();
+// Start once at import; every send waits for the same setup instead of creating a second transporter
+const transporterReady = createTransporter();
+const OTP_EXPIRY_MINUTES = Number(process.env.OTP_EXPIRY_MINUTES) || 10;
 
 /**
  * Send OTP Verification Email
@@ -52,13 +54,13 @@ createTransporter();
  * @param {string} otp - 6-digit OTP code
  */
 export async function sendOtpEmail(to, otp) {
-  if (!transporter) await createTransporter();
+  await transporterReady;
 
   const mailOptions = {
-    from: process.env.SMTP_FROM || '"StockSense IMS" <harshelectrotrader77@gmail.com>',
+    from: process.env.SMTP_FROM || '"StockSense IMS" <no-reply@stocksense.app>',
     to: to,
     subject: `Your StockSense Verification Code: ${otp}`,
-    text: `Your StockSense verification code is: ${otp}. This code is valid for 10 minutes.`,
+    text: `Your StockSense verification code is: ${otp}. This code is valid for ${OTP_EXPIRY_MINUTES} minutes.`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -91,7 +93,7 @@ export async function sendOtpEmail(to, otp) {
             </p>
             <div class="otp-box">
               <div class="otp-code">${otp}</div>
-              <div class="expiry">Expires in 10 minutes • Do not share this code with anyone</div>
+              <div class="expiry">Expires in ${OTP_EXPIRY_MINUTES} minutes • Do not share this code with anyone</div>
             </div>
             <p class="text" style="font-size: 12px; margin-bottom: 0;">
               If you didn't request this code, you can safely ignore this email. Your account remains secure.
@@ -124,7 +126,7 @@ export async function sendOtpEmail(to, otp) {
  * @param {string} role - User role (inventory_manager | warehouse_staff)
  */
 export async function sendWelcomeEmail(to, name, role) {
-  if (!transporter) await createTransporter();
+  await transporterReady;
 
   const roleTitle = role === 'manager' || role === 'inventory_manager' 
     ? 'Inventory Manager' 
@@ -143,7 +145,7 @@ export async function sendWelcomeEmail(to, name, role) {
           <p style="color: #64748b; font-size: 14px;">Your account is ready as <strong>${roleTitle}</strong>.</p>
           <p style="color: #64748b; font-size: 14px;">You can now manage receipts, delivery dispatches, internal rack transfers, and real-time ledger accounting.</p>
           <div style="margin-top: 25px; text-align: center;">
-            <a href="http://localhost:5173" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 9999px; text-decoration: none; font-weight: bold; font-size: 13px;">Launch Inventory Dashboard</a>
+            <a href="${(process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim()}" style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 9999px; text-decoration: none; font-weight: bold; font-size: 13px;">Launch Inventory Dashboard</a>
           </div>
         </div>
       </body>
