@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { setCurrentUser } from '../api/inventory';
+import { DATA_SOURCE, setCurrentUser } from '../api/inventory';
 import { API_BASE_URL } from '../lib/constants';
 
 const STORAGE_KEY = 'stocksense.user';
@@ -49,7 +49,7 @@ export function AuthProvider({ children }) {
   // On start, check the saved token with the backend. Log out if it expired or the account is gone.
   useEffect(() => {
     const { token } = session;
-    if (!token) return;
+    if (!token || DATA_SOURCE === 'mock') return; // mock mode has no backend to ask
     let cancelled = false;
     fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then(async (res) => {
@@ -65,6 +65,12 @@ export function AuthProvider({ children }) {
     };
     // Runs once with the token saved from the last visit.
   }, []);
+
+  // Any API call that comes back 401 (expired or invalid token) ends the session.
+  useEffect(() => {
+    window.addEventListener('stocksense:unauthorized', logout);
+    return () => window.removeEventListener('stocksense:unauthorized', logout);
+  }, [logout]);
 
   const value = useMemo(
     () => ({ user: session.user, token: session.token, login, logout }),

@@ -9,7 +9,9 @@ import { FilterLabel, SearchInput, Select } from '../../components/ui/Field';
 import { EmptyState, ErrorState } from '../../components/ui/Skeleton';
 import { Table, TableSkeleton, Td, Th, Tr } from '../../components/ui/Table';
 import { Tabs } from '../../components/ui/Tabs';
+import { useAuth } from '../../context/AuthContext';
 import { useAsync } from '../../hooks/useAsync';
+import { isManager } from '../../lib/constants';
 import { formatQty } from '../../lib/utils';
 import { ProductFormDialog } from './ProductFormDialog';
 
@@ -30,6 +32,7 @@ export default function ProductsPage() {
   const category = params.get('category') || '';
   const stock = params.get('stock') || '';
   const [editing, setEditing] = useState(null);
+  const canManage = isManager(useAuth().user);
 
   const { data: categories } = useAsync(getCategories);
   const products = useAsync(() => getProducts({ search, category_id: category }), [search, category]);
@@ -47,7 +50,7 @@ export default function ProductsPage() {
     setParams(next, { replace: true });
   };
 
-  const creating = params.get('new') === '1';
+  const creating = canManage && params.get('new') === '1';
   const dialogOpen = creating || editing !== null;
   const closeDialog = () => {
     setEditing(null);
@@ -65,10 +68,12 @@ export default function ProductsPage() {
               <Tags />
               Categories
             </ButtonLink>
-            <Button variant="primary" onClick={() => setParam('new', '1')}>
-              <Plus />
-              New product
-            </Button>
+            {canManage && (
+              <Button variant="primary" onClick={() => setParam('new', '1')}>
+                <Plus />
+                New product
+              </Button>
+            )}
           </>
         }
       />
@@ -162,6 +167,7 @@ export default function ProductsPage() {
                       <StockBadge state={p.stock_state} />
                     </Td>
                     <Td align="right">
+                      {canManage && (
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -173,6 +179,7 @@ export default function ProductsPage() {
                       >
                         <Pencil />
                       </Button>
+                      )}
                     </Td>
                   </Tr>
                 ))}

@@ -48,6 +48,8 @@ export function isActive(item, pathname) {
 /** Section and page name for the breadcrumb. */
 export function findPage(pathname) {
   if (pathname === '/profile') return { section: 'Account', title: 'My Profile' };
+  const doc = pathname.match(/^\/operations\/(new|\d+)(\/edit)?$/);
+  if (doc) return { section: 'Operations', title: doc[1] === 'new' ? 'New document' : doc[2] ? 'Edit document' : 'Document' };
   for (const group of NAV_GROUPS) {
     const item = group.items.find((i) => isActive(i, pathname));
     if (item) {

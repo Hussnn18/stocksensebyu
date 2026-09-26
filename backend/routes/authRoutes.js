@@ -6,6 +6,7 @@ import {
   handleSignUp,
   handleSignIn,
   handleGetMe,
+  handleUpdateMe,
 } from '../controllers/authController.js';
 import { requireAuth } from '../middleware/auth.js';
 
@@ -15,6 +16,7 @@ const router = express.Router();
 router.post('/signup', handleSignUp);
 router.post('/login', handleSignIn);
 router.get('/me', requireAuth, handleGetMe);
+router.put('/me', requireAuth, handleUpdateMe);
 
 // OTP password reset: send code → verify code → set new password
 router.post('/send-otp', handleSendOtp);

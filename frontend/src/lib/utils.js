@@ -45,6 +45,9 @@ export function displayName(name) {
     .join(' ');
 }
 
+// 'YYYY-MM' for a date, as used by GET /dashboard/calendar?month=
+export const toMonthKey = (value) => toDateKey(value).slice(0, 7);
+
 export function initials(name) {
   const parts = displayName(name).split(/\s+/).filter(Boolean);
   if (!parts.length) return 'U';

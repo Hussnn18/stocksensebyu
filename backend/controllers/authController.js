@@ -133,6 +133,32 @@ export async function handleGetMe(req, res) {
 }
 
 /**
+ * PUT /api/auth/me  { name }  (requires Bearer token)  →  { user }
+ */
+export async function handleUpdateMe(req, res) {
+  try {
+    const name = String(req.body.name || '').trim();
+    if (name.length < 2 || name.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Enter your name (2 to 100 characters).',
+        fields: { name: 'Use 2 to 100 characters.' },
+      });
+    }
+
+    await pool.query('UPDATE users SET name = ? WHERE id = ?', [name, req.user.id]);
+    const [rows] = await pool.query('SELECT id, name, email, role FROM users WHERE id = ?', [req.user.id]);
+    if (!rows.length) {
+      return res.status(401).json({ success: false, message: 'Your account no longer exists. Please sign up again.' });
+    }
+    return res.status(200).json({ success: true, message: 'Your name has been updated.', user: publicUser(rows[0]) });
+  } catch (error) {
+    console.error('❌ Error updating profile:', error);
+    return res.status(500).json({ success: false, message: 'Could not update your profile. Please try again.' });
+  }
+}
+
+/**
  * Password reset step 1 — POST /api/auth/send-otp  { email }
  * Emails a 6-digit code. The code is stored hashed in password_otps.
  */

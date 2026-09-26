@@ -7,8 +7,9 @@ import { Button, ButtonLink } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Skeleton';
 import { Table, TableSkeleton, Td, Th, Tr } from '../../components/ui/Table';
+import { useAuth } from '../../context/AuthContext';
 import { useAsync } from '../../hooks/useAsync';
-import { STOCK_META } from '../../lib/constants';
+import { STOCK_META, isManager } from '../../lib/constants';
 import { cn, formatDate, formatDateTime, formatQty } from '../../lib/utils';
 import { MoveQuantity } from '../moves/MoveQuantity';
 import { ProductFormDialog } from './ProductFormDialog';
@@ -17,6 +18,7 @@ import { ReorderRuleForm } from './ReorderRuleForm';
 export default function ProductDetailPage() {
   const { id } = useParams();
   const [editOpen, setEditOpen] = useState(false);
+  const canManage = isManager(useAuth().user);
   const product = useAsync(() => getProduct(id), [id]);
   const moves = useAsync(() => getMoves({ product_id: id }), [id]);
   const p = product.data;
@@ -60,10 +62,12 @@ export default function ProductDetailPage() {
               <History />
               Full history
             </ButtonLink>
-            <Button variant="primary" onClick={() => setEditOpen(true)}>
-              <Pencil />
-              Edit product
-            </Button>
+            {canManage && (
+              <Button variant="primary" onClick={() => setEditOpen(true)}>
+                <Pencil />
+                Edit product
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -120,7 +124,7 @@ export default function ProductDetailPage() {
 
         <Card>
           <CardHeader title="Reordering rule" description="Low stock alert fires at or below the minimum" />
-          <div className="p-5">{p ? <ReorderRuleForm key={p.product_id} product={p} /> : <Skeleton className="h-24 w-full rounded-2xl" />}</div>
+          <div className="p-5">{p ? <ReorderRuleForm key={p.product_id} product={p} readOnly={!canManage} /> : <Skeleton className="h-24 w-full rounded-2xl" />}</div>
         </Card>
       </div>
 

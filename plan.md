@@ -67,14 +67,8 @@ stocksensebyu/
 | `products` | id, name, sku UNIQUE, category_id FK, uom, created_at |
 | `reorder_rules` | id, product_id FK, location_id FK, min_qty, max_qty |
 | `stock_quants` | product_id, location_id, quantity — PK(product_id, location_id), CHECK quantity ≥ 0 |
-| `operations` | id, reference (e.g. `WH/IN/0001`), type ENUM('receipt','delivery','internal','adjustment'), status ENUM('draft','waiting','ready','done','canceled'), partner_name, source_location_id, dest_location_id, scheduled_date, created_by, validated_at |
+| `operations` | id, reference (e.g. `WH/IN/0001`), type ENUM('receipt','delivery','internal','adjustment'), status ENUM('draft','waiting','ready','done','canceled'), partner_name, source_location_id, dest_location_id, scheduled_date, created_by, validated_at, picked_at, packed_at (delivery pick/pack steps) |
 | `operation_lines` | id, operation_id FK, product_id FK, quantity, counted_qty NULL |
-<<<<<<< HEAD
-| `stock_moves` | id, operation_id FK, product_id, from_location_id, to_location_id, quantity, moved_at, user_id — **the ledger** |
-
-Indexes on `sku`, `(type, status)`, `moved_at` and `product_id`, used by the dashboard filters and SKU search.
-
-=======
 | `operation_sequences` | type PK, prefix (IN/OUT/INT/ADJ), next_number, locked with `SELECT … FOR UPDATE` to generate references |
 | `stock_moves` | id, operation_id FK (NULL for initial stock), reference, product_id, from_location_id, to_location_id, quantity (always > 0), moved_at, user_id — **the ledger** |
 
@@ -84,10 +78,11 @@ Views: `v_product_stock` (on-hand + low/out state per product), `v_dashboard_kpi
 
 Files: [database/schema.sql](database/schema.sql), [database/seed.sql](database/seed.sql). Setup steps: [database/README.md](database/README.md).
 
->>>>>>> a52e08d (New updates)
 ---
 
 ## 5. REST API (summary)
+Full contract with every path, query parameter and row shape: [docs/api.md](docs/api.md).
+
 - **Auth (built, under `/api`):** `POST /auth/signup`, `POST /auth/login` (returns JWT), `GET /auth/me` (Bearer token), OTP reset: `POST /auth/send-otp` → `POST /auth/verify-otp` (returns a 10-minute reset token) → `POST /auth/reset-password`
   - Responses use `{ "success": true|false, "message": "...", ...data }`. New endpoints should follow the same shape.
   - Protect routes with `requireAuth` (and `requireRole('manager')` where needed) from `backend/middleware/auth.js`.
@@ -164,8 +159,6 @@ Files: [database/schema.sql](database/schema.sql), [database/seed.sql](database/
   - Expected result: the quants add up to **77**, and the ledger shows **4 moves**.
 - Try to deliver more than is on hand. Validate should be rejected and nothing written (the transaction rolls back).
 - Test OTP reset end to end (OTP shown in the console in dev). An expired OTP should be rejected.
-<<<<<<< HEAD
-=======
 
 ---
 
@@ -237,4 +230,3 @@ Each member presents their own part:
 - **C:** run the steel flow live (receive 100 → transfer → deliver 20 → adjust −3 → **77**), then show Move History.
 
 Keep a screen recording of the full demo as a backup.
->>>>>>> a52e08d (New updates)

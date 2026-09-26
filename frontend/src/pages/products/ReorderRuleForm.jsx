@@ -5,7 +5,7 @@ import { Field, Input } from '../../components/ui/Field';
 import { useToast } from '../../components/ui/Toast';
 
 /** Min / max editor for one product's reordering rule. */
-export function ReorderRuleForm({ product }) {
+export function ReorderRuleForm({ product, readOnly = false }) {
   const toast = useToast();
   const [min, setMin] = useState(product.min_qty ?? '');
   const [max, setMax] = useState(product.max_qty ?? '');
@@ -31,17 +31,23 @@ export function ReorderRuleForm({ product }) {
     <form onSubmit={save} noValidate className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <Field label={`Minimum (${product.uom})`}>
-          {(p) => <Input {...p} type="number" min="0" step="any" inputMode="decimal" value={min} onChange={(e) => setMin(e.target.value)} placeholder="—" />}
+          {(p) => <Input {...p} type="number" min="0" step="any" inputMode="decimal" value={min} onChange={(e) => setMin(e.target.value)} placeholder="—" disabled={readOnly} />}
         </Field>
         <Field label={`Refill up to (${product.uom})`}>
-          {(p) => <Input {...p} type="number" min="0" step="any" inputMode="decimal" value={max} onChange={(e) => setMax(e.target.value)} placeholder="—" />}
+          {(p) => <Input {...p} type="number" min="0" step="any" inputMode="decimal" value={max} onChange={(e) => setMax(e.target.value)} placeholder="—" disabled={readOnly} />}
         </Field>
       </div>
       {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
-      <p className="text-xs text-slate-500">Leave the minimum empty to switch low-stock alerts off for this product.</p>
-      <Button type="submit" variant="primary" size="sm" loading={saving} disabled={!changed}>
-        Save rule
-      </Button>
+      {readOnly ? (
+        <p className="text-xs text-slate-500">Only inventory managers can change reorder rules.</p>
+      ) : (
+        <>
+          <p className="text-xs text-slate-500">Leave the minimum empty to switch low-stock alerts off for this product.</p>
+          <Button type="submit" variant="primary" size="sm" loading={saving} disabled={!changed}>
+            Save rule
+          </Button>
+        </>
+      )}
     </form>
   );
 }

@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
+import { Table2 } from 'lucide-react';
 import { getMoves } from '../../api/inventory';
+import { Button } from '../../components/ui/Button';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Tabs } from '../../components/ui/Tabs';
 import { Table, Td, Th, Tr } from '../../components/ui/Table';
@@ -71,28 +73,28 @@ export function MovementChart() {
     <Card className="flex flex-col">
       <CardHeader
         title="Stock movements"
-        description="Ledger entries per day, split by direction"
+        description="Ledger entries per day"
         actions={
           <>
             <Tabs label="Time range" items={RANGES} value={range} onChange={setRange} />
-            <Tabs
-              label="View"
-              items={[
-                { value: 'chart', label: 'Chart' },
-                { value: 'table', label: 'Table' },
-              ]}
-              value={view}
-              onChange={setView}
-            />
+            <Button
+              variant={view === 'table' ? 'primary' : 'outline'}
+              size="icon-sm"
+              aria-pressed={view === 'table'}
+              aria-label="Show as table"
+              title="Show as table"
+              onClick={() => setView((v) => (v === 'table' ? 'chart' : 'table'))}
+            >
+              <Table2 />
+            </Button>
           </>
         }
       />
-      <div className="flex flex-wrap gap-x-5 gap-y-2 px-5 pt-4">
+      <div className="flex flex-wrap gap-x-5 gap-y-2 px-5 pt-4" aria-label="Legend">
         {SERIES.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-2 text-xs">
+          <div key={s.key} className="flex items-center gap-2 text-xs" title={s.hint}>
             <span className="size-2.5 rounded-[3px]" style={{ background: s.color }} />
-            <span className="font-bold text-slate-800">{s.label}</span>
-            <span className="text-slate-500">{s.hint}</span>
+            <span className="text-slate-600">{s.label}</span>
             <span className="font-bold tabular-nums text-slate-900">{moves ? totals[i] : '–'}</span>
           </div>
         ))}

@@ -3,6 +3,9 @@ import LandingPage from './App.jsx';
 import { AppLayout } from './components/app/AppLayout';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import MoveHistoryPage from './pages/moves/MoveHistoryPage';
+import AdjustmentsPage from './pages/operations/AdjustmentsPage';
+import OperationDetailPage from './pages/operations/OperationDetailPage';
+import OperationFormPage from './pages/operations/OperationFormPage';
 import OperationsListPage from './pages/operations/OperationsListPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CategoriesPage from './pages/products/CategoriesPage';
@@ -26,7 +29,10 @@ export default function AppRoutes() {
         <Route path="/operations/receipts" element={<OperationsListPage key="receipt" type="receipt" />} />
         <Route path="/operations/deliveries" element={<OperationsListPage key="delivery" type="delivery" />} />
         <Route path="/operations/transfers" element={<OperationsListPage key="internal" type="internal" />} />
-        <Route path="/operations/adjustments" element={<OperationsListPage key="adjustment" type="adjustment" />} />
+        <Route path="/operations/adjustments" element={<AdjustmentsPage />} />
+        <Route path="/operations/new" element={<OperationFormPage />} />
+        <Route path="/operations/:id" element={<OperationDetailPage />} />
+        <Route path="/operations/:id/edit" element={<OperationFormPage />} />
         <Route path="/moves" element={<MoveHistoryPage />} />
         <Route path="/settings/warehouses" element={<WarehousesPage />} />
         <Route path="/profile" element={<ProfilePage />} />

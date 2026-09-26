@@ -8,7 +8,9 @@ import { ConfirmDialog } from '../../components/ui/Dialog';
 import { Input } from '../../components/ui/Field';
 import { EmptyState, Skeleton } from '../../components/ui/Skeleton';
 import { useToast } from '../../components/ui/Toast';
+import { useAuth } from '../../context/AuthContext';
 import { useAsync } from '../../hooks/useAsync';
+import { isManager } from '../../lib/constants';
 
 export default function CategoriesPage() {
   const toast = useToast();
@@ -17,6 +19,7 @@ export default function CategoriesPage() {
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const canManage = isManager(useAuth().user);
 
   const add = async (event) => {
     event.preventDefault();
@@ -37,7 +40,7 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <PageHeader title="Categories" description="Group products so you can filter the catalog and the dashboard by category." />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className={canManage ? 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]' : 'max-w-3xl'}>
         <Card>
           <CardHeader title="All categories" description={categories ? `${categories.length} categories` : 'Loading…'} />
           {!categories ? (
@@ -53,12 +56,13 @@ export default function CategoriesPage() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {categories.map((c) => (
-                <CategoryRow key={c.id} category={c} onDelete={() => setDeleting(c)} />
+                <CategoryRow key={c.id} category={c} canManage={canManage} onDelete={() => setDeleting(c)} />
               ))}
             </ul>
           )}
         </Card>
 
+        {canManage && (
         <Card className="h-fit">
           <CardHeader title="Add category" />
           <form onSubmit={add} noValidate className="space-y-3 p-5">
@@ -79,6 +83,7 @@ export default function CategoriesPage() {
             </Button>
           </form>
         </Card>
+        )}
       </div>
 
       <ConfirmDialog
@@ -101,7 +106,7 @@ export default function CategoriesPage() {
   );
 }
 
-function CategoryRow({ category, onDelete }) {
+function CategoryRow({ category, canManage, onDelete }) {
   const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(category.name);
@@ -161,6 +166,8 @@ function CategoryRow({ category, onDelete }) {
           {category.product_count} product{category.product_count === 1 ? '' : 's'}
         </Link>
       </div>
+      {canManage && (
+      <>
       <Button
         variant="ghost"
         size="icon-sm"
@@ -175,6 +182,8 @@ function CategoryRow({ category, onDelete }) {
       <Button variant="danger-ghost" size="icon-sm" aria-label={`Delete ${category.name}`} onClick={onDelete}>
         <Trash2 />
       </Button>
+      </>
+      )}
     </li>
   );
 }

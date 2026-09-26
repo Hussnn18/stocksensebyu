@@ -9,7 +9,9 @@ import { EmptyState } from '../../components/ui/Skeleton';
 import { Table, TableSkeleton, Td, Th, Tr } from '../../components/ui/Table';
 import { Tabs } from '../../components/ui/Tabs';
 import { useToast } from '../../components/ui/Toast';
+import { useAuth } from '../../context/AuthContext';
 import { useAsync } from '../../hooks/useAsync';
+import { isManager } from '../../lib/constants';
 import { formatQty } from '../../lib/utils';
 
 const VIEWS = [
@@ -21,6 +23,7 @@ const VIEWS = [
 export default function ReorderRulesPage() {
   const { data } = useAsync(getReorderRules);
   const [view, setView] = useState('all');
+  const canManage = isManager(useAuth().user);
   const rows = data?.filter(VIEWS.find((v) => v.value === view).test);
 
   return (
@@ -54,7 +57,7 @@ export default function ReorderRulesPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <RuleRow key={`${r.product_id}-${r.min_qty}-${r.max_qty}`} row={r} />
+                <RuleRow key={`${r.product_id}-${r.min_qty}-${r.max_qty}`} row={r} readOnly={!canManage} />
               ))}
             </tbody>
           </Table>
@@ -64,7 +67,7 @@ export default function ReorderRulesPage() {
   );
 }
 
-function RuleRow({ row }) {
+function RuleRow({ row, readOnly }) {
   const toast = useToast();
   const [min, setMin] = useState(row.min_qty ?? '');
   const [max, setMax] = useState(row.max_qty ?? '');
@@ -111,6 +114,7 @@ function RuleRow({ row }) {
           onKeyDown={onKeyDown}
           placeholder="—"
           aria-label={`Minimum for ${row.name}`}
+          disabled={readOnly}
           aria-invalid={error ? true : undefined}
           className="h-8 w-28"
         />
@@ -126,6 +130,7 @@ function RuleRow({ row }) {
           onKeyDown={onKeyDown}
           placeholder="—"
           aria-label={`Refill level for ${row.name}`}
+          disabled={readOnly}
           className="h-8 w-28"
         />
         {error && <div className="mt-1 text-xs font-medium whitespace-normal text-rose-600">{error}</div>}
@@ -143,9 +148,11 @@ function RuleRow({ row }) {
         <StockBadge state={row.stock_state} />
       </Td>
       <Td align="right">
-        <Button size="sm" variant={changed ? 'primary' : 'outline'} disabled={!changed} loading={saving} onClick={save}>
-          Save
-        </Button>
+        {!readOnly && (
+          <Button size="sm" variant={changed ? 'primary' : 'outline'} disabled={!changed} loading={saving} onClick={save}>
+            Save
+          </Button>
+        )}
       </Td>
     </Tr>
   );

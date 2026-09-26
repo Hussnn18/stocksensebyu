@@ -21,6 +21,8 @@ The last three queries in `seed.sql` open result tabs:
 ## Reset to fresh demo data
 Run `schema.sql` then `seed.sql` again. **This deletes everything** in the `stocksense` database.
 
+**Schema update:** `operations` now has `picked_at` and `packed_at` (delivery Pick / Pack). If your database was created before this, re-run `schema.sql` then `seed.sql`.
+
 ## Rules for the team
 - Only the schema owner edits `schema.sql`. Ask in the group chat first, then everyone re-runs both files.
 - Stock is only changed by the backend's Validate code, inside one transaction that inserts into `stock_moves` **and** updates `stock_quants`. Never edit `stock_quants` by hand.
