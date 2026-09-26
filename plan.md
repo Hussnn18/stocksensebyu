@@ -69,10 +69,22 @@ stocksensebyu/
 | `stock_quants` | product_id, location_id, quantity — PK(product_id, location_id), CHECK quantity ≥ 0 |
 | `operations` | id, reference (e.g. `WH/IN/0001`), type ENUM('receipt','delivery','internal','adjustment'), status ENUM('draft','waiting','ready','done','canceled'), partner_name, source_location_id, dest_location_id, scheduled_date, created_by, validated_at |
 | `operation_lines` | id, operation_id FK, product_id FK, quantity, counted_qty NULL |
+<<<<<<< HEAD
 | `stock_moves` | id, operation_id FK, product_id, from_location_id, to_location_id, quantity, moved_at, user_id — **the ledger** |
 
 Indexes on `sku`, `(type, status)`, `moved_at` and `product_id`, used by the dashboard filters and SKU search.
 
+=======
+| `operation_sequences` | type PK, prefix (IN/OUT/INT/ADJ), next_number, locked with `SELECT … FOR UPDATE` to generate references |
+| `stock_moves` | id, operation_id FK (NULL for initial stock), reference, product_id, from_location_id, to_location_id, quantity (always > 0), moved_at, user_id — **the ledger** |
+
+Indexes on `sku`, `(type, status)`, `moved_at` and `product_id`, used by the dashboard filters and SKU search.
+
+Views: `v_product_stock` (on-hand + low/out state per product), `v_dashboard_kpis` (the 5 KPIs in one row), `v_move_history` (ledger with names and signed stock effect).
+
+Files: [database/schema.sql](database/schema.sql), [database/seed.sql](database/seed.sql). Setup steps: [database/README.md](database/README.md).
+
+>>>>>>> a52e08d (New updates)
 ---
 
 ## 5. REST API (summary)
@@ -150,3 +162,77 @@ Indexes on `sku`, `(type, status)`, `moved_at` and `product_id`, used by the das
   - Expected result: the quants add up to **77**, and the ledger shows **4 moves**.
 - Try to deliver more than is on hand. Validate should be rejected and nothing written (the transaction rolls back).
 - Test OTP reset end to end (OTP shown in the console in dev). An expired OTP should be rejected.
+<<<<<<< HEAD
+=======
+
+---
+
+## 9. Team Split (3 members) & How We Work Together
+
+### 9.1 Who builds what
+We split **by feature, full stack**: each person owns their feature from the SQL query to the screen. That means fewer hand-offs, fewer "waiting for the API" moments, and everyone can demo their own part.
+
+| | **Member A: Foundation, Auth & Settings** | **Member B: Products, Dashboard & Reports** | **Member C: Operations Engine** |
+|---|---|---|---|
+| In one line | Sets up the project everyone builds on | Everything you **read**: products, stock levels, KPIs, history | Everything that **changes stock** |
+| Database | Owns `schema.sql` and `seed.sql`, indexes | Queries for KPIs, low stock, stock per location, ledger | Writes to `operations`, `operation_lines`, `stock_moves`, `stock_quants` |
+| Backend | Express skeleton, DB pool, error handler, auth (signup, login, JWT, OTP + Nodemailer), `/me`, warehouses & locations API | `/products`, `/categories`, `/reorder-rules`, `/dashboard/*`, `/alerts/low-stock`, `/moves` | `/operations` CRUD, `validate` (one transaction), `cancel`, reference numbers (`WH/IN/0001`) |
+| Frontend | Vite + Tailwind setup, theme tokens, `AppLayout` (sidebar, topbar), routing, `AuthContext`, `api/client.js`, shared components (`DataTable`, `StatusBadge`, `Modal`, `ConfirmDialog`, `Toast`, `FormField`), Login / Signup / OTP pages, Profile, Warehouses page | Dashboard (KPI cards, filters, low-stock panel), Products list / detail / form, Categories, Move History with CSV export | Receipts, Delivery Orders, Internal Transfers, Adjustments: list with status tabs, create form with `ProductPicker`, detail page with status steps and Validate |
+| Must test | OTP expiry, protected routes, 401 → logout | KPI numbers match the database, filters work together | The brief's steel flow ends at 77; over-delivery is rejected and rolled back |
+| Extra duty | Integration, README, running the final build | Helps C test the ledger | Demo seed flow |
+
+**Why this is balanced:** A's work is front-loaded (setup unblocks everyone), and A's features later on are lighter, so A also handles integration and the README. C has the hardest logic but no setup work. B's work is mostly queries and screens.
+
+If one of you is much stronger on frontend or backend, keep this feature ownership and pair up on the weaker layer. Don't switch to a frontend / backend / database split, because then everyone waits on everyone.
+
+### 9.2 Kickoff together (first 1–2 hours, before splitting)
+1. **Pick the theme** from the mockup (`design/dashboard-mockup.html`) and freeze the color tokens.
+2. **Freeze the schema:** walk through `schema.sql` together. After this, only A edits it. Others ask in chat, A makes the change, and everyone re-runs it.
+3. **Freeze the API contract:** for every endpoint in §5, write one example request and response in `docs/api.md`. Shared rules:
+   - Success: `{ "data": ... }`. Error: `{ "error": { "message": "..." } }` with the right HTTP status code.
+   - Dates in ISO format. Auth header: `Authorization: Bearer <token>`.
+4. **A pushes the skeleton:** `client/`, `server/`, `database/`, `.env.example`, seed data. Everyone clones it, runs schema + seed in Workbench, and sees the app start.
+
+### 9.3 Git workflow
+- One GitHub repo. `main` must always run, and nobody pushes to it directly.
+- One branch per feature, e.g. `feat/auth`, `feat/products`, `feat/receipts`. Keep branches small and merge them within a few hours.
+- Open a pull request. Another member skims it (10 minutes max) and merges.
+- Pull `main` into your branch often: `git pull origin main`.
+- Commit messages look like `feat(products): add SKU search`.
+- Never commit `.env`, only `.env.example`.
+
+### 9.4 Avoiding merge conflicts
+- Each person edits only their own files: `server/src/routes/<feature>.js`, its controller and service, and `client/src/pages/<feature>/`.
+- Shared files have one owner, **A**: `server/src/index.js` (route registration), `client/src/App.jsx` (routes), `Sidebar`, `schema.sql`, `tailwind.config.js`. At kickoff, A registers every route and sidebar item with a placeholder page, so B and C rarely need to touch these files.
+- A builds the shared components first. B and C use them and ask A for changes instead of copying them.
+
+### 9.5 Don't wait on each other
+- **Seed data first.** A's seed includes warehouses, locations, products and a few operations in every status. B's dashboard and C's Validate button can then work from the first hour.
+- **Mock first, real API later.** Frontend pages can start with mock JSON that matches `docs/api.md` (reuse the mockup's sample data) and switch to the real API once it's ready.
+- B's dashboard reads the tables C writes. Agree on the column names at kickoff and don't rename them later.
+
+### 9.6 Checkpoints
+Hold a quick 10-minute sync at each checkpoint.
+
+| Checkpoint | What works |
+|---|---|
+| **CP1: Skeleton** | App runs on all 3 laptops, login works, database is seeded |
+| **CP2: Core** | Products CRUD; receipts and deliveries validate and change stock; dashboard KPIs come from real data |
+| **CP3: Complete** | Transfers, adjustments, move history, OTP email, low-stock alerts, all filters |
+| **CP4: Freeze** | No new features. Bug fixes, demo data, README, demo rehearsal |
+
+**Rule:** if a feature doesn't work by CP3, cut it or simplify it. A smaller app that works beats a bigger one that crashes during the demo.
+
+### 9.7 Communication
+- One group chat (WhatsApp or Discord) for quick questions. Post a message every time you merge to `main`.
+- A GitHub Projects board with To do / Doing / Done columns and one card per page or endpoint.
+- Announce any schema or API change **before** making it.
+
+### 9.8 Demo
+Each member presents their own part:
+- **A:** the problem, tech stack, login and OTP reset.
+- **B:** dashboard KPIs and filters, products and low-stock alerts.
+- **C:** run the steel flow live (receive 100 → transfer → deliver 20 → adjust −3 → **77**), then show Move History.
+
+Keep a screen recording of the full demo as a backup.
+>>>>>>> a52e08d (New updates)

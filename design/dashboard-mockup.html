@@ -1,0 +1,708 @@
+<title>StockSense Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#EEF1F0; --surface:#FFFFFF; --surface-2:#F6F8F7; --ink:#16212A; --ink-2:#4A5863; --ink-3:#7D8A93; --line:#D9DFDD;
+  --accent:#0F6B64; --accent-ink:#FFFFFF; --accent-soft:#DCEEEB;
+  --side:#15232B; --side-ink:#C3CFD4; --side-dim:#7F9098; --side-active:#22363F; --side-line:#24343C; --side-strong:#FFFFFF;
+  --draft-fg:#5B6770; --draft-bg:#E7EBEA; --wait-fg:#8A5A00; --wait-bg:#FFEFC2; --ready-fg:#1D5FA8; --ready-bg:#DFEBFA;
+  --done-fg:#1E7B45; --done-bg:#DDF2E4; --cancel-fg:#B42318; --cancel-bg:#FDE3E0;
+  --pos:#1E7B45; --neg:#B42318; --shadow:0 1px 2px rgba(20,33,42,.06),0 4px 16px rgba(20,33,42,.06);
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace; --display:"Archivo","IBM Plex Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0F1519; --surface:#172026; --surface-2:#1C272E; --ink:#E6ECEE; --ink-2:#A9B6BC; --ink-3:#7B8990; --line:#2A363D;
+    --accent:#3DB5A8; --accent-ink:#06201D; --accent-soft:#16332F;
+    --side:#0B1115; --side-ink:#C3CFD4; --side-dim:#6E7E86; --side-active:#1A262C; --side-line:#1B252B;
+    --draft-fg:#A8B3B9; --draft-bg:#262F35; --wait-fg:#F2C14E; --wait-bg:#3A2E0E; --ready-fg:#7DB4F0; --ready-bg:#13283F;
+    --done-fg:#6FD39A; --done-bg:#12301E; --cancel-fg:#F4877C; --cancel-bg:#3B1714; --pos:#6FD39A; --neg:#F4877C;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0F1519; --surface:#172026; --surface-2:#1C272E; --ink:#E6ECEE; --ink-2:#A9B6BC; --ink-3:#7B8990; --line:#2A363D;
+  --accent:#3DB5A8; --accent-ink:#06201D; --accent-soft:#16332F;
+  --side:#0B1115; --side-ink:#C3CFD4; --side-dim:#6E7E86; --side-active:#1A262C; --side-line:#1B252B;
+  --draft-fg:#A8B3B9; --draft-bg:#262F35; --wait-fg:#F2C14E; --wait-bg:#3A2E0E; --ready-fg:#7DB4F0; --ready-bg:#13283F;
+  --done-fg:#6FD39A; --done-bg:#12301E; --cancel-fg:#F4877C; --cancel-bg:#3B1714; --pos:#6FD39A; --neg:#F4877C;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-size:12.5px}
+.num{font-variant-numeric:tabular-nums}
+
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100%}
+/* Sidebar */
+.side{background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;padding:18px 12px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px;border-bottom:1px solid var(--side-line);margin-bottom:12px}
+.brand-mark{width:30px;height:30px;border-radius:6px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-family:var(--display);font-weight:700;font-size:15px}
+.brand-name{font-family:var(--display);font-weight:700;font-size:17px;color:var(--side-strong);letter-spacing:.01em}
+.nav{display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto}
+.nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--side-dim);padding:14px 10px 6px}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:var(--side-ink);padding:8px 10px;border-radius:6px;text-align:left;font-size:13.5px}
+.nav button:hover{background:var(--side-active)}
+.nav button.active{background:var(--side-active);color:var(--side-strong);box-shadow:inset 3px 0 0 var(--accent)}
+.nav svg{width:17px;height:17px;flex:none;opacity:.85}
+.nav .count{margin-left:auto;font-size:11px;background:var(--side-line);color:var(--side-ink);padding:1px 7px;border-radius:10px}
+.profile{border-top:1px solid var(--side-line);padding:12px 8px 0;display:flex;align-items:center;gap:10px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.profile small{display:block;color:var(--side-dim);font-size:11.5px}
+.profile .who{font-size:13px;color:var(--side-strong)}
+.logout{margin-left:auto;background:none;border:0;color:var(--side-dim);padding:6px;border-radius:6px}
+.logout:hover{color:var(--side-strong);background:var(--side-active)}
+.theme-select{background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:7px 8px;font-size:12.5px;max-width:170px}
+
+/* Theme comparison */
+.criteria{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--ink-2)}
+.criteria b{color:var(--ink);font-weight:600}
+.themes{display:flex;flex-direction:column;gap:14px}
+.theme-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;display:grid;grid-template-columns:56px 260px minmax(0,1fr);gap:0;overflow:hidden}
+.theme-card.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.rank{display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:26px;color:var(--ink-3);border-right:1px solid var(--line);background:var(--surface-2)}
+.theme-card:first-child .rank{color:var(--accent)}
+.mini{display:grid;grid-template-columns:70px 1fr;min-height:150px;border-right:1px solid var(--line)}
+.mini-side{padding:10px 8px;display:flex;flex-direction:column;gap:6px}
+.mini-side i{display:block;height:7px;border-radius:3px;opacity:.55}
+.mini-side i.on{opacity:1;height:14px}
+.mini-main{padding:10px;display:flex;flex-direction:column;gap:8px}
+.mini-kpis{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mini-kpi{border-radius:4px;padding:6px;font-family:var(--display);font-weight:700;font-size:15px}
+.mini-kpi small{display:block;font-family:var(--sans);font-weight:400;font-size:9px;opacity:.7}
+.mini-row{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.mini-btn{font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px}
+.mini-badge{font-size:9.5px;font-weight:600;padding:1px 6px;border-radius:8px}
+.theme-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.theme-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.theme-top h3{margin:0;font-family:var(--display);font-size:16px}
+.theme-top .total{font-family:var(--display);font-weight:700;font-size:15px;margin-left:auto}
+.theme-top .total small{color:var(--ink-3);font-weight:500;font-size:12px}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.sw{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-2)}
+.sw i{width:18px;height:18px;border-radius:4px;border:1px solid var(--line);flex:none}
+.scores{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.score{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--ink-3)}
+.pips{display:flex;gap:2px}
+.pips i{flex:1;height:5px;border-radius:2px;background:var(--line)}
+.pips i.f{background:var(--ink-2)}
+.pros{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12.5px}
+.pros ul{margin:0;padding-left:16px;color:var(--ink-2);display:flex;flex-direction:column;gap:2px}
+.pros h4{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:500}
+@media (max-width:1000px){.theme-card{grid-template-columns:48px minmax(0,1fr)}.mini{grid-column:2;border-right:0;border-bottom:1px solid var(--line)}.theme-body{grid-column:2}.rank{grid-row:1/3}}
+@media (max-width:560px){.scores{grid-template-columns:repeat(3,minmax(0,1fr))}.pros{grid-template-columns:1fr}.theme-select{display:none}}
+
+/* Main */
+.main{min-width:0;display:flex;flex-direction:column}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:12px 24px}
+.menu-btn{display:none;background:none;border:1px solid var(--line);border-radius:6px;padding:6px}
+.crumbs{font-size:12px;color:var(--ink-3)}
+.page-title{font-family:var(--display);font-weight:600;font-size:19px;margin:0;text-wrap:balance}
+.search{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:7px 10px;width:min(320px,40vw)}
+.search input{border:0;background:none;outline:none;width:100%}
+.search svg{width:15px;height:15px;color:var(--ink-3);flex:none}
+.icon-btn{position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:7px;display:grid;place-items:center}
+.icon-btn svg{width:17px;height:17px}
+.icon-btn .dot{position:absolute;top:-5px;right:-5px;background:var(--cancel-fg);color:#fff;font-size:10px;font-weight:600;border-radius:9px;padding:0 5px;line-height:16px}
+.content{padding:22px 24px 40px;display:flex;flex-direction:column;gap:18px;max-width:1320px;width:100%}
+.mock-note{font-size:12px;color:var(--ink-3);display:flex;gap:8px;align-items:center}
+.mock-note b{color:var(--ink-2);font-weight:600}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:6px;position:relative}
+.kpi:hover{border-color:var(--accent)}
+.kpi .k-label{font-size:12px;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.kpi .k-val{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.05}
+.kpi .k-sub{font-size:12px;color:var(--ink-3)}
+.kpi .k-sub b{font-weight:600}
+.kpi.warn{border-top:3px solid var(--wait-fg);padding-top:12px}
+.kpi .go{position:absolute;right:12px;top:12px;color:var(--ink-3);font-size:12px}
+
+/* Panels */
+.grid-2{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0}
+.panel-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-head h2{font-family:var(--display);font-size:15px;font-weight:600;margin:0}
+.panel-head .spacer{flex:1}
+.filters{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.filters label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3)}
+select,.input{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 9px;font-size:13px;min-width:0}
+.input{width:100%}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{background:none;border:1px solid transparent;border-radius:6px;padding:5px 10px;font-size:12.5px;color:var(--ink-2)}
+.tab:hover{background:var(--surface-2)}
+.tab.active{background:var(--accent-soft);color:var(--accent);border-color:transparent;font-weight:600}
+.tab .n{color:var(--ink-3);font-weight:400;margin-left:4px}
+
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);padding:9px 16px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 16px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--surface-2)}
+td.r,th.r{text-align:right}
+.muted{color:var(--ink-3)}
+.route{color:var(--ink-2);font-size:12.5px}
+.route .arr{color:var(--ink-3);margin:0 4px}
+.empty{padding:36px 16px;text-align:center;color:var(--ink-3)}
+
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:10px;line-height:18px}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.b-draft{color:var(--draft-fg);background:var(--draft-bg)}
+.b-waiting{color:var(--wait-fg);background:var(--wait-bg)}
+.b-ready{color:var(--ready-fg);background:var(--ready-bg)}
+.b-done{color:var(--done-fg);background:var(--done-bg)}
+.b-canceled{color:var(--cancel-fg);background:var(--cancel-bg)}
+.type-chip{font-family:var(--mono);font-size:11px;padding:1px 6px;border:1px solid var(--line);border-radius:4px;color:var(--ink-2)}
+
+/* Alerts */
+.alert-list{display:flex;flex-direction:column}
+.alert{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.alert:last-child{border-bottom:0}
+.alert .a-name{font-weight:500}
+.alert .a-sku{grid-column:1}
+.bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%}
+.alert .a-qty{text-align:right;font-weight:600}
+.alert .a-min{font-size:11.5px;color:var(--ink-3);text-align:right}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:7px 13px;font-size:13px;font-weight:500;border:1px solid var(--line);background:var(--surface)}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--cancel-fg)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn svg{width:15px;height:15px}
+
+/* Detail */
+.stepper{display:flex;gap:0;flex-wrap:wrap}
+.step{font-size:12px;padding:5px 14px 5px 18px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-3);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%,8px 50%);margin-left:-4px}
+.step:first-child{clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%);margin-left:0;padding-left:12px}
+.step.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;padding:16px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3)}
+.field div{font-weight:500}
+.warn-text{color:var(--wait-fg);font-size:12px}
+
+.diff-pos{color:var(--pos);font-weight:600}
+.diff-neg{color:var(--neg);font-weight:600}
+
+/* Settings */
+.wh-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.loc{display:flex;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--line);font-size:13px}
+.loc:last-child{border-bottom:0}
+
+/* Auth */
+.auth{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.auth-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.auth-card h3{font-family:var(--display);margin:0;font-size:18px}
+.auth-card p{margin:0;color:var(--ink-2);font-size:13px}
+.otp{display:flex;gap:8px}
+.otp input{width:42px;height:48px;text-align:center;font-family:var(--mono);font-size:20px;border:1px solid var(--line);border-radius:7px;background:var(--surface)}
+.link{color:var(--accent);background:none;border:0;padding:0;font-size:13px;text-align:left}
+.steps-mini{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+
+/* Dialog & toast */
+.scrim{position:fixed;inset:0;background:rgba(10,18,22,.5);display:grid;place-items:center;z-index:50;padding:16px}
+.dialog{background:var(--surface);border-radius:10px;max-width:420px;width:100%;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+.dialog h3{margin:0;font-family:var(--display);font-size:17px}
+.dialog p{margin:0;color:var(--ink-2)}
+.dialog .actions{display:flex;justify-content:flex-end;gap:8px}
+.toast{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--surface);padding:10px 14px;border-radius:8px;font-size:13px;z-index:60;box-shadow:var(--shadow)}
+
+/* Responsive */
+@media (max-width:1180px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-2{grid-template-columns:1fr}}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .side{position:fixed;left:0;top:0;bottom:0;width:250px;z-index:40;transform:translateX(-100%);transition:transform .2s}
+  .side.open{transform:none;box-shadow:var(--shadow)}
+  .menu-btn{display:grid}
+  .top{padding:10px 16px}
+  .content{padding:18px 16px 32px}
+  .search{display:none}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:420px){.kpis{grid-template-columns:1fr}.otp input{width:38px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <aside class="side" id="side">
+    <div class="brand"><div class="brand-mark">S</div><div class="brand-name">StockSense</div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="profile">
+      <div class="avatar">RK</div>
+      <div><div class="who">Riya Kapoor</div><small>Inventory Manager</small></div>
+      <button class="logout" title="Log out" data-go="auth" aria-label="Log out"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <button class="menu-btn" id="menuBtn" aria-label="Open menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <div>
+        <div class="crumbs" id="crumbs">Overview</div>
+        <h1 class="page-title" id="title">Dashboard</h1>
+      </div>
+      <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="globalSearch" placeholder="Search SKU or product…" aria-label="Search SKU or product"></label>
+      <button class="icon-btn" data-go="dashboard" title="Low stock alerts" aria-label="Low stock alerts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="dot" id="bellCount">3</span></button>
+      <select class="theme-select" id="paletteSel" aria-label="Color theme"></select>
+      <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+    </header>
+    <main class="content" id="view"></main>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script>
+/* ---------- Sample data (mirrors database/schema in plan.md) ---------- */
+const WAREHOUSES=[
+  {id:1,name:"Main Warehouse",code:"WH",address:"Plot 14, Focal Point, Ludhiana",locations:["WH/Stock","WH/Rack A","WH/Rack B","WH/Production Floor"]},
+  {id:2,name:"Warehouse 2",code:"WH2",address:"GT Road, Khanna",locations:["WH2/Stock","WH2/Dispatch Bay"]}
+];
+const PRODUCTS=[
+  {sku:"STL-ROD-12",name:"Steel Rods 12mm",cat:"Raw Material",uom:"kg",min:50,stock:{"WH/Production Floor":77}},
+  {sku:"STL-SHT-02",name:"Steel Sheet 2mm",cat:"Raw Material",uom:"kg",min:40,stock:{"WH/Stock":18}},
+  {sku:"FUR-CHR-01",name:"Office Chair",cat:"Finished Goods",uom:"units",min:10,stock:{}},
+  {sku:"FRM-CHR-01",name:"Chair Frame",cat:"Components",uom:"units",min:30,stock:{"WH/Rack A":90,"WH/Rack B":50}},
+  {sku:"FUR-DSK-01",name:"Wooden Desk",cat:"Finished Goods",uom:"units",min:8,stock:{"WH2/Stock":32}},
+  {sku:"HW-BLT-M8",name:"Bolt M8",cat:"Hardware",uom:"pcs",min:500,stock:{"WH/Rack A":1800,"WH2/Stock":600}},
+  {sku:"PNT-GRY-5L",name:"Paint Grey 5L",cat:"Consumables",uom:"can",min:12,stock:{"WH/Stock":9}},
+  {sku:"PKG-BOX-L",name:"Packing Box L",cat:"Packaging",uom:"pcs",min:100,stock:{"WH2/Dispatch Bay":310}}
+];
+const OPS=[
+  {ref:"WH/IN/0007",type:"receipt",partner:"Tata Steel Ltd",from:"Vendor",to:"WH/Stock",date:"2026-09-28",status:"ready",wh:"WH",lines:[["STL-ROD-12",50],["STL-SHT-02",60]]},
+  {ref:"WH/IN/0006",type:"receipt",partner:"Asian Paints",from:"Vendor",to:"WH/Stock",date:"2026-09-27",status:"waiting",wh:"WH",lines:[["PNT-GRY-5L",24]]},
+  {ref:"WH/IN/0005",type:"receipt",partner:"Guru Nanak Packaging",from:"Vendor",to:"WH2/Dispatch Bay",date:"2026-09-30",status:"draft",wh:"WH2",lines:[["PKG-BOX-L",200]]},
+  {ref:"WH/IN/0004",type:"receipt",partner:"Tata Steel Ltd",from:"Vendor",to:"WH/Stock",date:"2026-09-20",status:"done",wh:"WH",lines:[["STL-ROD-12",100]]},
+  {ref:"WH/OUT/0012",type:"delivery",partner:"Sharma Furnishings",from:"WH/Stock",to:"Customer",date:"2026-09-27",status:"ready",wh:"WH",lines:[["FUR-CHR-01",10],["FUR-DSK-01",4]]},
+  {ref:"WH/OUT/0011",type:"delivery",partner:"Metro Office Supplies",from:"WH2/Stock",to:"Customer",date:"2026-09-29",status:"waiting",wh:"WH2",lines:[["FUR-DSK-01",6]]},
+  {ref:"WH/OUT/0010",type:"delivery",partner:"Bharat Frames",from:"WH/Production Floor",to:"Customer",date:"2026-09-22",status:"done",wh:"WH",lines:[["STL-ROD-12",20]]},
+  {ref:"WH/OUT/0009",type:"delivery",partner:"Sharma Furnishings",from:"WH/Stock",to:"Customer",date:"2026-09-19",status:"canceled",wh:"WH",lines:[["FRM-CHR-01",15]]},
+  {ref:"WH/INT/0004",type:"internal",partner:"—",from:"WH/Stock",to:"WH/Production Floor",date:"2026-09-27",status:"ready",wh:"WH",lines:[["STL-SHT-02",10]]},
+  {ref:"WH/INT/0003",type:"internal",partner:"—",from:"WH/Rack A",to:"WH/Rack B",date:"2026-09-28",status:"draft",wh:"WH",lines:[["FRM-CHR-01",20]]},
+  {ref:"WH/INT/0002",type:"internal",partner:"—",from:"WH/Stock",to:"WH/Production Floor",date:"2026-09-21",status:"done",wh:"WH",lines:[["STL-ROD-12",100]]},
+  {ref:"WH/ADJ/0002",type:"adjustment",partner:"Physical count",from:"WH/Production Floor",to:"Inventory Loss",date:"2026-09-23",status:"done",wh:"WH",lines:[["STL-ROD-12",3]],counted:[["STL-ROD-12",80,77]]}
+];
+const MOVES=[
+  {at:"2026-09-23 16:40",ref:"WH/ADJ/0002",sku:"STL-ROD-12",from:"WH/Production Floor",to:"Inventory Loss",qty:-3,user:"Aman S."},
+  {at:"2026-09-22 11:05",ref:"WH/OUT/0010",sku:"STL-ROD-12",from:"WH/Production Floor",to:"Customer",qty:-20,user:"Aman S."},
+  {at:"2026-09-21 09:30",ref:"WH/INT/0002",sku:"STL-ROD-12",from:"WH/Stock",to:"WH/Production Floor",qty:0,moved:100,user:"Riya K."},
+  {at:"2026-09-20 14:12",ref:"WH/IN/0004",sku:"STL-ROD-12",from:"Vendor",to:"WH/Stock",qty:100,user:"Riya K."},
+  {at:"2026-09-18 10:20",ref:"WH/IN/0003",sku:"HW-BLT-M8",from:"Vendor",to:"WH/Rack A",qty:2000,user:"Riya K."},
+  {at:"2026-09-17 15:48",ref:"WH/INT/0001",sku:"HW-BLT-M8",from:"WH/Rack A",to:"WH2/Stock",qty:0,moved:600,user:"Aman S."},
+  {at:"2026-09-16 12:00",ref:"WH/OUT/0008",sku:"HW-BLT-M8",from:"WH/Rack A",to:"Customer",qty:-200,user:"Aman S."}
+];
+const TYPE_LABEL={receipt:"Receipt",delivery:"Delivery",internal:"Internal",adjustment:"Adjustment"};
+const TYPE_PAGE={receipt:"receipts",delivery:"deliveries",internal:"transfers",adjustment:"adjustments"};
+const STATUSES=["draft","waiting","ready","done","canceled"];
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+const prod=sku=>PRODUCTS.find(p=>p.sku===sku);
+const onHand=p=>Object.values(p.stock).reduce((a,b)=>a+b,0);
+const stockState=p=>{const q=onHand(p);return q===0?"out":q<=p.min?"low":"ok"};
+const fmt=n=>n.toLocaleString("en-IN");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- Icons ---------- */
+const I={
+  dash:'<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>',
+  box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
+  in:'<path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v3h16v-3"/>',
+  out:'<path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M4 17v3h16v-3"/>',
+  swap:'<path d="M7 7h13l-3-3M17 17H4l3 3"/>',
+  adj:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/>',
+  hist:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+  wh:'<path d="M3 21V9l9-6 9 6v12"/><path d="M7 21v-8h10v8M7 17h10"/>',
+  key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3"/>'
+};
+const ico=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`;
+
+const pending=t=>OPS.filter(o=>o.type===t&&!["done","canceled"].includes(o.status)).length;
+const NAV=[
+  {label:"Overview"},
+  {id:"dashboard",t:"Dashboard",i:"dash"},
+  {id:"products",t:"Products",i:"box"},
+  {label:"Operations"},
+  {id:"receipts",t:"Receipts",i:"in",c:()=>pending("receipt")},
+  {id:"deliveries",t:"Delivery Orders",i:"out",c:()=>pending("delivery")},
+  {id:"transfers",t:"Internal Transfers",i:"swap",c:()=>pending("internal")},
+  {id:"adjustments",t:"Inventory Adjustment",i:"adj"},
+  {id:"moves",t:"Move History",i:"hist"},
+  {label:"Settings"},
+  {id:"warehouses",t:"Warehouses",i:"wh"},
+  {label:"Design review"},
+  {id:"themes",t:"Color themes",i:"palette"},
+  {id:"auth",t:"Login & OTP reset",i:"key"}
+];
+I.palette='<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.3A5.7 5.7 0 0 0 22 9.8C22 5.5 17.5 2 12 2Z"/>';
+
+/* ---------- Color themes (ranked) ---------- */
+const BASE_LIGHT={accent:"#0F6B64","accent-ink":"#FFFFFF","accent-soft":"#DCEEEB",ground:"#EEF1F0",surface:"#FFFFFF","surface-2":"#F6F8F7",ink:"#16212A","ink-2":"#4A5863","ink-3":"#7D8A93",line:"#D9DFDD",side:"#15232B","side-ink":"#C3CFD4","side-dim":"#7F9098","side-active":"#22363F","side-line":"#24343C","side-strong":"#FFFFFF","done-fg":"#1E7B45","done-bg":"#DDF2E4","ready-fg":"#1D5FA8","ready-bg":"#DFEBFA","wait-fg":"#8A5A00","wait-bg":"#FFEFC2","cancel-fg":"#B42318","cancel-bg":"#FDE3E0"};
+const PALETTES=[
+  {id:"green",name:"Marketplace Green",ref:"Upwork-style",
+   light:{accent:"#108A00","accent-ink":"#FFFFFF","accent-soft":"#E4F3DF",ground:"#F2F5F0","surface-2":"#F7F9F6",ink:"#001E00","ink-2":"#3F4E3A","ink-3":"#6B7866",line:"#D5E0D1",side:"#FFFFFF","side-ink":"#3F4E3A","side-dim":"#869182","side-active":"#EAF4E6","side-line":"#E1E9DE","side-strong":"#001E00","done-fg":"#0A6B4A","done-bg":"#D9F0E6"},
+   dark:{accent:"#4FD13F","accent-ink":"#06200A","accent-soft":"#15311A",ground:"#0E140F",surface:"#151D16","surface-2":"#1A241B",ink:"#E4EDE2","ink-2":"#A7B6A3","ink-3":"#7A8A76",line:"#283427",side:"#0A100B","side-ink":"#C5D2C2","side-dim":"#6E7E6B","side-active":"#17231A","side-line":"#1A241B","side-strong":"#FFFFFF","done-fg":"#5FD6A8","done-bg":"#0F2E24"},
+   swatches:[["Brand green","#108A00"],["Bright green","#14A800"],["Ink","#001E00"],["Mint tint","#E4F3DF"],["White","#FFFFFF"]],
+   scores:[3,5,5,4,5],
+   pros:["Matches the Upwork-like look the team referenced","Green reads as 'stock healthy, go ahead', which suits inventory","White sidebar keeps the screen light and calm"],
+   cons:["Brand green is close to the 'Done / In stock' green, so Done is shifted to a deeper teal-green","Plain white sidebar needs good borders to separate it from the content"]},
+  {id:"teal",name:"Warehouse Teal",ref:"Current mockup",light:{},dark:{},
+   swatches:[["Teal","#0F6B64"],["Sidebar","#15232B"],["Ink","#16212A"],["Teal tint","#DCEEEB"],["Ground","#EEF1F0"]],
+   scores:[4,5,5,4,3],
+   pros:["Teal sits apart from every status color, so badges stay clear","Dark sidebar gives a strong frame for a data-heavy tool"],
+   cons:["Further from the Upwork reference","Dark sidebar can feel heavier on long sessions"]},
+  {id:"navy",name:"Navy & Sky",ref:"Enterprise ERP",
+   light:{accent:"#1D64D8","accent-ink":"#FFFFFF","accent-soft":"#E1ECFB",ground:"#EEF2F7","surface-2":"#F5F8FB",ink:"#13233A","ink-2":"#475A73","ink-3":"#7A8BA1",line:"#D6DEE8",side:"#0F2744","side-ink":"#C4D1E3","side-dim":"#7F93AE","side-active":"#1B3A60","side-line":"#1B3556","side-strong":"#FFFFFF","ready-fg":"#6D4AC7","ready-bg":"#EDE7FB"},
+   dark:{accent:"#6AA5FF","accent-ink":"#061629","accent-soft":"#13284A",ground:"#0C131D",surface:"#131C28","surface-2":"#182331",ink:"#E4EAF2","ink-2":"#A6B3C4","ink-3":"#778699",line:"#26334A",side:"#08101B","side-ink":"#C4D1E3","side-dim":"#6D7F96","side-active":"#14233A","side-line":"#152236","side-strong":"#FFFFFF","ready-fg":"#B39DF5","ready-bg":"#2A2145"},
+   swatches:[["Blue","#1D64D8"],["Navy","#0F2744"],["Ink","#13233A"],["Sky tint","#E1ECFB"],["Ground","#EEF2F7"]],
+   scores:[3,5,4,3,2],
+   pros:["Looks trustworthy and familiar to business users","Very readable in both light and dark"],
+   cons:["Blue clashes with the 'Ready' status, so Ready moves to violet","Looks like many other admin tools"]},
+  {id:"orange",name:"Slate & Safety Orange",ref:"Industrial",
+   light:{accent:"#D9480F","accent-ink":"#FFFFFF","accent-soft":"#FDE8DC",ground:"#F1F2F3","surface-2":"#F7F8F8",ink:"#1F2933","ink-2":"#52606D","ink-3":"#7B8794",line:"#DADFE3",side:"#1F2933","side-ink":"#CBD2D9","side-dim":"#7B8794","side-active":"#323F4B","side-line":"#2C3843","side-strong":"#FFFFFF"},
+   dark:{accent:"#FF8A4C","accent-ink":"#2A1003","accent-soft":"#3A1E10",ground:"#111519",surface:"#181D22","surface-2":"#1D2329",ink:"#E6E9EC","ink-2":"#A9B1BA","ink-3":"#7B8591",line:"#2B323A",side:"#0C0F12","side-ink":"#CBD2D9","side-dim":"#6B7580","side-active":"#1C2228","side-line":"#1A1F24","side-strong":"#FFFFFF"},
+   swatches:[["Safety orange","#D9480F"],["Slate","#1F2933"],["Steel","#52606D"],["Orange tint","#FDE8DC"],["Ground","#F1F2F3"]],
+   scores:[2,4,4,5,1],
+   pros:["Most distinctive, feels like a warehouse floor","Strong call-to-action buttons"],
+   cons:["Orange buttons look like warnings next to amber 'Low stock' and 'Waiting'","Tiring as a main color on an all-day tool"]},
+  {id:"indigo",name:"Classic Indigo",ref:"Generic SaaS",
+   light:{accent:"#4F46E5","accent-ink":"#FFFFFF","accent-soft":"#E8E7FC",ground:"#F3F4F8","surface-2":"#F8F9FC",ink:"#1B1D2E","ink-2":"#4B4F66","ink-3":"#7C8098",line:"#DDDFEA",side:"#1B1D2E","side-ink":"#C9CBDB","side-dim":"#7C8098","side-active":"#2B2E45","side-line":"#272A3E","side-strong":"#FFFFFF"},
+   dark:{accent:"#8B85FF","accent-ink":"#120F3A","accent-soft":"#221F4A",ground:"#0F1017",surface:"#171823","surface-2":"#1C1E2B",ink:"#E7E8F0","ink-2":"#AAADC2","ink-3":"#7C8098",line:"#2A2C3D",side:"#0A0B11","side-ink":"#C9CBDB","side-dim":"#6E7288","side-active":"#1A1C29","side-line":"#181A26","side-strong":"#FFFFFF"},
+   swatches:[["Indigo","#4F46E5"],["Sidebar","#1B1D2E"],["Ink","#1B1D2E"],["Indigo tint","#E8E7FC"],["Ground","#F3F4F8"]],
+   scores:[4,5,2,1,1],
+   pros:["Safe and readable, no status clashes","Default in many UI kits, so quick to build"],
+   cons:["Has nothing to do with inventory or the reference","Looks like a template, judges have seen it many times"]}
+];
+const CRITERIA=["Status clarity","Readability","Fits inventory","Distinctive","Matches reference"];
+PALETTES.forEach(p=>p.total=p.scores.reduce((a,b)=>a+b,0));
+PALETTES.sort((a,b)=>b.total-a.total);
+(function injectPalettes(){
+  const decl=m=>Object.entries(m).map(([k,v])=>`--${k}:${v}`).join(";");
+  let css="";
+  PALETTES.forEach(p=>{if(!Object.keys(p.light).length)return;
+    css+=`:root[data-palette="${p.id}"]{${decl(p.light)}}`;
+    css+=`@media (prefers-color-scheme: dark){:root[data-palette="${p.id}"]:not([data-theme="light"]){${decl(p.dark)}}}`;
+    css+=`:root[data-palette="${p.id}"][data-theme="dark"]{${decl(p.dark)}}`;
+  });
+  const s=document.createElement("style");s.textContent=css;document.head.appendChild(s);
+})();
+let currentPalette="green";
+try{const saved=localStorage.getItem("ss-palette");if(PALETTES.some(p=>p.id===saved))currentPalette=saved}catch(e){}
+function applyPalette(id){currentPalette=id;document.documentElement.setAttribute("data-palette",id);try{localStorage.setItem("ss-palette",id)}catch(e){}const sel=document.getElementById("paletteSel");if(sel)sel.value=id}
+document.getElementById("paletteSel").innerHTML=PALETTES.map((p,i)=>`<option value="${p.id}">#${i+1} ${p.name}</option>`).join("");
+applyPalette(currentPalette);
+
+function vThemes(){
+  setHead("Design review","Color themes");
+  const pips=n=>`<span class="pips">${[1,2,3,4,5].map(i=>`<i class="${i<=n?"f":""}"></i>`).join("")}</span>`;
+  const mini=p=>{const c={...BASE_LIGHT,...p.light};
+    return `<div class="mini" style="background:${c.ground}">
+      <div class="mini-side" style="background:${c.side};border-right:1px solid ${c["side-line"]}"><i style="background:${c["side-strong"]};width:70%"></i><i class="on" style="background:${c["side-active"]};box-shadow:inset 3px 0 0 ${c.accent}"></i><i style="background:${c["side-ink"]}"></i><i style="background:${c["side-ink"]};width:80%"></i><i style="background:${c["side-ink"]};width:60%"></i></div>
+      <div class="mini-main"><div class="mini-kpis"><div class="mini-kpi" style="background:${c.surface};color:${c.ink};border:1px solid ${c.line}">7<small>In stock</small></div><div class="mini-kpi" style="background:${c.surface};color:${c.ink};border:1px solid ${c.line};border-top:3px solid ${c["wait-fg"]}">3<small>Low / out</small></div></div>
+      <div class="mini-row"><span class="mini-btn" style="background:${c.accent};color:${c["accent-ink"]}">Validate</span><span class="mini-btn" style="background:${c.surface};color:${c.ink};border:1px solid ${c.line}">Cancel</span></div>
+      <div class="mini-row"><span class="mini-badge" style="background:${c["wait-bg"]};color:${c["wait-fg"]}">Waiting</span><span class="mini-badge" style="background:${c["ready-bg"]};color:${c["ready-fg"]}">Ready</span><span class="mini-badge" style="background:${c["done-bg"]};color:${c["done-fg"]}">Done</span><span class="mini-badge" style="background:${c["cancel-bg"]};color:${c["cancel-fg"]}">Canceled</span></div></div></div>`};
+  return `${note}
+  <section class="panel"><div class="panel-head"><h2>How themes are ranked</h2></div>
+  <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+    <div class="criteria">${CRITERIA.map((c,i)=>`<span><b>${c}</b> ${["main color doesn’t clash with status badges","text contrast in light and dark","color meaning suits stock and warehouses","memorable, not a template look","close to the Upwork-like reference"][i]}</span>`).join("")}</div>
+    <div class="muted" style="font-size:12.5px">Each criterion is scored 1–5 (max 25). Apply a theme to see it on every screen, or use the switcher in the top bar.</div>
+  </div></section>
+  <div class="themes">${PALETTES.map((p,i)=>`<article class="theme-card ${p.id===currentPalette?"current":""}">
+    <div class="rank">${i+1}</div>${mini(p)}
+    <div class="theme-body">
+      <div class="theme-top"><h3>${p.name}</h3><span class="type-chip">${p.ref}</span>${p.id===currentPalette?'<span class="badge b-done">Applied</span>':`<button class="btn" data-palette="${p.id}">Apply theme</button>`}<span class="total num">${p.total}<small>/25</small></span></div>
+      <div class="swatches">${p.swatches.map(([n,h])=>`<span class="sw"><i style="background:${h}"></i>${n} <span class="mono">${h}</span></span>`).join("")}</div>
+      <div class="scores">${CRITERIA.map((c,j)=>`<div class="score">${c}${pips(p.scores[j])}</div>`).join("")}</div>
+      <div class="pros"><div><h4>Good</h4><ul>${p.pros.map(x=>`<li>${x}</li>`).join("")}</ul></div><div><h4>Watch out</h4><ul>${p.cons.map(x=>`<li>${x}</li>`).join("")}</ul></div></div>
+    </div></article>`).join("")}</div>`;
+}
+
+/* ---------- State & routing ---------- */
+const state={page:"dashboard",detail:null,dash:{type:"",status:"",wh:"",cat:""},opsTab:"all",prodQ:"",prodCat:"",moveQ:""};
+function go(page,detail=null){state.page=page;state.detail=detail;state.opsTab="all";try{history.replaceState(null,"","#"+page)}catch(e){}render();document.getElementById("side").classList.remove("open");window.scrollTo(0,0)}
+
+function renderNav(){
+  document.getElementById("nav").innerHTML=NAV.map(n=>n.label?`<div class="nav-label">${n.label}</div>`:
+    `<button data-go="${n.id}" class="${state.page===n.id||(state.detail&&TYPE_PAGE[state.detail.type]===n.id)?"active":""}">${ico(n.i)}<span>${n.t}</span>${n.c&&n.c()?`<span class="count">${n.c()}</span>`:""}</button>`).join("");
+}
+function setHead(crumb,title){document.getElementById("crumbs").textContent=crumb;document.getElementById("title").textContent=title}
+const badge=s=>`<span class="badge b-${s}">${cap(s)}</span>`;
+const route=(a,b)=>`<span class="route">${esc(a)}<span class="arr">→</span>${esc(b)}</span>`;
+const note='<div class="mock-note"><b>Design mockup</b> · sample data based on the steel example in the brief</div>';
+
+/* ---------- Views ---------- */
+function vDashboard(){
+  setHead("Overview","Dashboard");
+  const inStock=PRODUCTS.filter(p=>onHand(p)>0).length;
+  const low=PRODUCTS.filter(p=>stockState(p)==="low"),out=PRODUCTS.filter(p=>stockState(p)==="out");
+  const d=state.dash;
+  const catsOf=o=>o.lines.map(l=>prod(l[0]).cat);
+  const rows=OPS.filter(o=>(!d.type||o.type===d.type)&&(!d.status||o.status===d.status)&&(!d.wh||o.wh===d.wh)&&(!d.cat||catsOf(o).includes(d.cat)));
+  const cats=[...new Set(PRODUCTS.map(p=>p.cat))];
+  const opt=(v,l,sel)=>`<option value="${v}" ${sel===v?"selected":""}>${l}</option>`;
+  const alerts=[...out,...low];
+  return `${note}
+  <section class="kpis">
+    <button class="kpi" data-go="products"><span class="k-label">Total products in stock</span><span class="k-val num">${inStock}</span><span class="k-sub">of ${PRODUCTS.length} active products</span><span class="go">↗</span></button>
+    <button class="kpi warn" data-go="products" data-stockfilter="1"><span class="k-label">Low / out of stock</span><span class="k-val num">${low.length+out.length}</span><span class="k-sub"><b style="color:var(--wait-fg)">${low.length} low</b> · <b style="color:var(--cancel-fg)">${out.length} out</b></span><span class="go">↗</span></button>
+    <button class="kpi" data-go="receipts"><span class="k-label">Pending receipts</span><span class="k-val num">${pending("receipt")}</span><span class="k-sub">${OPS.filter(o=>o.type==="receipt"&&o.status==="ready").length} ready to validate</span><span class="go">↗</span></button>
+    <button class="kpi" data-go="deliveries"><span class="k-label">Pending deliveries</span><span class="k-val num">${pending("delivery")}</span><span class="k-sub">next due 27 Sep</span><span class="go">↗</span></button>
+    <button class="kpi" data-go="transfers"><span class="k-label">Internal transfers scheduled</span><span class="k-val num">${pending("internal")}</span><span class="k-sub">WH/Stock → Production Floor</span><span class="go">↗</span></button>
+  </section>
+  <div class="grid-2">
+    <section class="panel">
+      <div class="panel-head"><h2>Operations</h2><span class="muted">${rows.length} of ${OPS.length}</span><span class="spacer"></span><button class="btn" id="clearF">Clear filters</button></div>
+      <div class="filters">
+        <label>Document type<select id="fType">${opt("","All types",d.type)}${Object.keys(TYPE_LABEL).map(k=>opt(k,TYPE_LABEL[k]+(k==="adjustment"?"s":"s"),d.type)).join("")}</select></label>
+        <label>Status<select id="fStatus">${opt("","All statuses",d.status)}${STATUSES.map(s=>opt(s,cap(s),d.status)).join("")}</select></label>
+        <label>Warehouse<select id="fWh">${opt("","All warehouses",d.wh)}${WAREHOUSES.map(w=>opt(w.code,w.name,d.wh)).join("")}</select></label>
+        <label>Product category<select id="fCat">${opt("","All categories",d.cat)}${cats.map(c=>opt(c,c,d.cat)).join("")}</select></label>
+      </div>
+      ${opsTable(rows,true)}
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Low stock alerts</h2><span class="spacer"></span><span class="badge b-waiting">${alerts.length}</span></div>
+      <div class="alert-list">${alerts.map(p=>{const q=onHand(p),pct=Math.min(100,q/p.min*100),col=q===0?"var(--cancel-fg)":"var(--wait-fg)";
+        return `<div class="alert"><div class="a-name">${esc(p.name)}</div><div class="a-qty num" style="color:${col}">${fmt(q)} ${p.uom}</div><div class="a-sku mono muted">${p.sku}</div><div class="a-min">reorder at ${fmt(p.min)}</div><div class="bar"><i style="width:${Math.max(pct,2)}%;background:${col}"></i></div></div>`}).join("")}</div>
+    </section>
+  </div>`;
+}
+
+function opsTable(rows,showType){
+  if(!rows.length) return `<div class="empty">No operations match these filters.</div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Reference</th>${showType?"<th>Type</th>":""}<th>Partner</th><th>From → To</th><th>Scheduled</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(o=>`<tr class="click" data-op="${o.ref}"><td class="mono">${o.ref}</td>${showType?`<td><span class="type-chip">${TYPE_LABEL[o.type]}</span></td>`:""}<td>${esc(o.partner)}</td><td>${route(o.from,o.to)}</td><td class="num">${new Date(o.date).toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}</td><td>${badge(o.status)}</td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+function vOps(type){
+  const titles={receipt:["Operations","Receipts","New receipt","Goods arriving from vendors. Validating adds the quantities to stock."],delivery:["Operations","Delivery Orders","New delivery","Goods leaving for customers. Validating removes the quantities from stock."],internal:["Operations","Internal Transfers","New transfer","Stock moving between locations. Total stock stays the same."],adjustment:["Operations","Inventory Adjustment","New count","Fix differences between recorded stock and a physical count."]}[type];
+  setHead(titles[0],titles[1]);
+  const all=OPS.filter(o=>o.type===type);
+  const rows=state.opsTab==="all"?all:all.filter(o=>o.status===state.opsTab);
+  const tabs=["all",...STATUSES].map(s=>`<button class="tab ${state.opsTab===s?"active":""}" data-tab="${s}">${s==="all"?"All":cap(s)}<span class="n">${s==="all"?all.length:all.filter(o=>o.status===s).length}</span></button>`).join("");
+  let extra="";
+  if(type==="adjustment"){
+    extra=`<section class="panel"><div class="panel-head"><h2>Quick count</h2><span class="muted">Select a location and product, enter what you counted</span></div>
+    <div class="fields">
+      <label class="field"><span>Location</span><select id="adjLoc">${WAREHOUSES.flatMap(w=>w.locations).map(l=>`<option ${l==="WH/Stock"?"selected":""}>${l}</option>`).join("")}</select></label>
+      <label class="field"><span>Product</span><select id="adjProd">${PRODUCTS.map(p=>`<option value="${p.sku}" ${p.sku==="PNT-GRY-5L"?"selected":""}>${p.sku} · ${esc(p.name)}</option>`).join("")}</select></label>
+      <div class="field"><span>Recorded</span><div class="num" id="adjRec"></div></div>
+      <label class="field"><span>Counted</span><input class="input num" id="adjCount" type="number" min="0" value="7"></label>
+      <div class="field"><span>Difference</span><div class="num" id="adjDiff"></div></div>
+      <div class="field" style="justify-content:flex-end"><button class="btn primary" id="adjApply">Apply adjustment</button></div>
+    </div></section>`;
+  }
+  return `${note}<p class="muted" style="margin:0">${titles[3]}</p>${extra}
+  <section class="panel"><div class="panel-head"><div class="tabs">${tabs}</div><span class="spacer"></span><button class="btn primary" id="newOp">+ ${titles[2]}</button></div>${opsTable(rows,false)}</section>`;
+}
+
+function vDetail(o){
+  setHead(TYPE_LABEL[o.type]+(o.type==="internal"?" transfer":""),o.ref);
+  const flow=o.type==="delivery"?["draft","waiting","ready","done"]:["draft","waiting","ready","done"];
+  const idx=flow.indexOf(o.status);
+  const stepNames=o.type==="delivery"?{draft:"Draft",waiting:"Waiting",ready:"Picked & packed",done:"Done"}:{draft:"Draft",waiting:"Waiting",ready:"Ready",done:"Done"};
+  const editable=!["done","canceled"].includes(o.status);
+  const sign=o.type==="receipt"?"+":o.type==="internal"?"":"−";
+  const lines=o.lines.map(([sku,q])=>{const p=prod(sku);const avail=o.from.startsWith("WH")?(p.stock[o.from]||0):null;const short=avail!==null&&o.type!=="receipt"&&o.type!=="adjustment"&&avail<q&&editable;
+    return `<tr><td class="mono">${sku}</td><td>${esc(p.name)}</td><td class="r num">${avail===null?'<span class="muted">—</span>':fmt(avail)+" "+p.uom}</td><td class="r num"><b>${fmt(q)}</b> ${p.uom}${short?`<div class="warn-text">Only ${fmt(avail)} available at ${o.from}</div>`:""}</td><td class="r num ${sign==="+"?"diff-pos":sign==="−"?"diff-neg":""}">${sign}${fmt(q)}</td></tr>`}).join("");
+  const blocked=o.lines.some(([sku,q])=>{const p=prod(sku);return o.type!=="receipt"&&o.type!=="adjustment"&&(p.stock[o.from]||0)<q});
+  let actions="";
+  if(o.status==="draft") actions=`<button class="btn" data-act="cancel">Cancel</button><button class="btn primary" data-act="waiting">Mark as waiting</button>`;
+  else if(o.status==="waiting") actions=`<button class="btn" data-act="cancel">Cancel</button><button class="btn primary" data-act="ready">${o.type==="delivery"?"Mark picked & packed":"Mark ready"}</button>`;
+  else if(o.status==="ready") actions=`<button class="btn" data-act="cancel">Cancel</button><button class="btn primary" data-act="validate" ${blocked?"disabled title='Not enough stock at source location'":""}>Validate</button>`;
+  return `${note}
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" data-go="${TYPE_PAGE[o.type]}">← Back</button><span class="spacer" style="flex:1"></span>${o.status==="canceled"?badge("canceled"):`<div class="stepper">${flow.map((s,i)=>`<span class="step ${i<=idx?"on":""}">${stepNames[s]}</span>`).join("")}</div>`}</div>
+  <section class="panel">
+    <div class="panel-head"><h2 class="mono" style="font-size:16px">${o.ref}</h2>${badge(o.status)}<span class="spacer"></span>${actions}</div>
+    <div class="fields">
+      <div class="field"><span>${o.type==="receipt"?"Supplier":o.type==="delivery"?"Customer":"Reason"}</span><div>${esc(o.partner==="—"?"Stock rebalancing":o.partner)}</div></div>
+      <div class="field"><span>Source location</span><div>${esc(o.from)}</div></div>
+      <div class="field"><span>Destination location</span><div>${esc(o.to)}</div></div>
+      <div class="field"><span>Scheduled date</span><div class="num">${new Date(o.date).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}</div></div>
+    </div>
+  </section>
+  <section class="panel"><div class="panel-head"><h2>Products</h2><span class="spacer"></span>${editable?'<button class="btn">+ Add product</button>':""}</div>
+    <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Product</th><th class="r">Available at source</th><th class="r">Quantity</th><th class="r">Stock effect</th></tr></thead><tbody>${lines}</tbody></table></div>
+  </section>
+  ${o.status==="done"?`<p class="muted" style="margin:0">Validated. Stock moves for this document appear in <button class="link" data-go="moves">Move History</button>.</p>`:""}`;
+}
+
+function vProducts(){
+  setHead("Inventory","Products");
+  const cats=[...new Set(PRODUCTS.map(p=>p.cat))];
+  const q=state.prodQ.toLowerCase();
+  const rows=PRODUCTS.filter(p=>(!q||p.sku.toLowerCase().includes(q)||p.name.toLowerCase().includes(q))&&(!state.prodCat||(state.prodCat==="__alert"?stockState(p)!=="ok":p.cat===state.prodCat)));
+  const sb=p=>{const s=stockState(p);return s==="ok"?'<span class="badge b-done">In stock</span>':s==="low"?'<span class="badge b-waiting">Low</span>':'<span class="badge b-canceled">Out of stock</span>'};
+  return `${note}<section class="panel">
+    <div class="panel-head"><h2>All products</h2><span class="muted">${rows.length} shown</span><span class="spacer"></span><button class="btn primary" id="newProd">+ New product</button></div>
+    <div class="filters">
+      <label style="flex:1;min-width:180px">Search<input class="input" id="prodQ" placeholder="SKU or name" value="${esc(state.prodQ)}"></label>
+      <label>Category<select id="prodCat"><option value="">All categories</option><option value="__alert" ${state.prodCat==="__alert"?"selected":""}>Low / out of stock only</option>${cats.map(c=>`<option ${state.prodCat===c?"selected":""}>${c}</option>`).join("")}</select></label>
+    </div>
+    ${rows.length?`<div class="table-wrap"><table><thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Unit</th><th>Locations</th><th class="r">On hand</th><th class="r">Reorder at</th><th>Status</th></tr></thead><tbody>
+    ${rows.map(p=>`<tr><td class="mono">${p.sku}</td><td>${esc(p.name)}</td><td class="muted">${p.cat}</td><td class="muted">${p.uom}</td><td class="route">${Object.entries(p.stock).map(([l,v])=>`${l} <span class="muted num">(${fmt(v)})</span>`).join("<br>")||'<span class="muted">—</span>'}</td><td class="r num"><b>${fmt(onHand(p))}</b></td><td class="r num muted">${fmt(p.min)}</td><td>${sb(p)}</td></tr>`).join("")}
+    </tbody></table></div>`:`<div class="empty">No products match “${esc(state.prodQ)}”.</div>`}
+  </section>`;
+}
+
+function vMoves(){
+  setHead("Operations","Move History");
+  const q=state.moveQ.toLowerCase();
+  const rows=MOVES.filter(m=>!q||m.sku.toLowerCase().includes(q)||m.ref.toLowerCase().includes(q)||prod(m.sku).name.toLowerCase().includes(q));
+  return `${note}<p class="muted" style="margin:0">The stock ledger. Every validated document writes one row per product. Rows cannot be edited.</p>
+  <section class="panel"><div class="panel-head"><h2>Stock ledger</h2><span class="spacer"></span><button class="btn" id="csv">Export CSV</button></div>
+  <div class="filters"><label style="flex:1;min-width:180px">Search<input class="input" id="moveQ" placeholder="Reference, SKU or product" value="${esc(state.moveQ)}"></label>
+  <label>From<input class="input" type="date" value="2026-09-15"></label><label>To<input class="input" type="date" value="2026-09-26"></label></div>
+  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Reference</th><th>Product</th><th>From → To</th><th class="r">Quantity</th><th>By</th></tr></thead><tbody>
+  ${rows.map(m=>{const p=prod(m.sku);const cls=m.qty>0?"diff-pos":m.qty<0?"diff-neg":"";const txt=m.qty>0?"+"+fmt(m.qty):m.qty<0?"−"+fmt(-m.qty):fmt(m.moved)+" moved";
+    return `<tr><td class="num muted">${m.at}</td><td class="mono">${m.ref}</td><td>${esc(p.name)} <span class="mono muted">${m.sku}</span></td><td>${route(m.from,m.to)}</td><td class="r num ${cls}">${txt} ${p.uom}</td><td class="muted">${m.user}</td></tr>`}).join("")}
+  </tbody></table></div></section>`;
+}
+
+function vWarehouses(){
+  setHead("Settings","Warehouses");
+  return `${note}<div style="display:flex;justify-content:flex-end"><button class="btn primary">+ New warehouse</button></div><div class="wh-grid">${WAREHOUSES.map(w=>`<section class="panel">
+    <div class="panel-head"><h2>${w.name}</h2><span class="type-chip">${w.code}</span><span class="spacer"></span><button class="btn">Edit</button></div>
+    <div style="padding:10px 16px;color:var(--ink-2);font-size:13px;border-bottom:1px solid var(--line)">${w.address}</div>
+    ${w.locations.map(l=>{const tot=PRODUCTS.reduce((a,p)=>a+(p.stock[l]?1:0),0);return `<div class="loc"><span class="mono">${l}</span><span class="muted">${tot} product${tot===1?"":"s"}</span></div>`}).join("")}
+    <div style="padding:10px 16px"><button class="link">+ Add location</button></div></section>`).join("")}
+    <section class="panel"><div class="panel-head"><h2>Virtual locations</h2></div>
+    ${["Vendor","Customer","Inventory Loss"].map(l=>`<div class="loc"><span class="mono">${l}</span><span class="muted">system</span></div>`).join("")}
+    <div style="padding:10px 16px;color:var(--ink-3);font-size:12.5px">Used as the other side of receipts, deliveries and adjustments so every stock change is a move between two locations.</div></section></div>`;
+}
+
+function vAuth(){
+  setHead("Screens","Login & OTP reset");
+  return `${note}<div class="auth">
+    <form class="auth-card" onsubmit="event.preventDefault();go('dashboard')">
+      <div class="brand" style="border:0;padding:0;margin:0"><div class="brand-mark">S</div><div class="brand-name" style="color:var(--ink)">StockSense</div></div>
+      <h3>Log in</h3><p>Use your work email to open the inventory dashboard.</p>
+      <label class="field"><span>Email</span><input class="input" id="lEmail" type="email" value="riya.kapoor@example.com"></label>
+      <label class="field"><span>Password</span><input class="input" id="lPass" type="password" value="password123"></label>
+      <button class="btn primary" type="submit" style="justify-content:center">Log in</button>
+      <div style="display:flex;justify-content:space-between"><button class="link" type="button">Create an account</button><button class="link" type="button">Forgot password?</button></div>
+    </form>
+    <form class="auth-card" onsubmit="event.preventDefault();toast('Password updated. Log in with your new password.')">
+      <div class="steps-mini">Reset password · step 2 of 3</div>
+      <h3>Enter the code</h3><p>We sent a 6-digit code to riya.kapoor@example.com. It expires in 10 minutes.</p>
+      <div class="otp">${[4,8,2,9,1,""].map((v,i)=>`<input id="otp${i}" inputmode="numeric" maxlength="1" value="${v}" aria-label="Digit ${i+1}">`).join("")}</div>
+      <button class="btn primary" type="submit" style="justify-content:center">Verify code</button>
+      <p class="muted" style="font-size:12px">Didn’t get it? Resend in 0:42</p>
+    </form>
+    <form class="auth-card" onsubmit="event.preventDefault()">
+      <div class="steps-mini">Sign up</div>
+      <h3>Create account</h3>
+      <label class="field"><span>Full name</span><input class="input" id="sName" value="Aman Singh"></label>
+      <label class="field"><span>Email</span><input class="input" id="sEmail" type="email" value="aman.singh@example.com"></label>
+      <label class="field"><span>Role</span><select id="sRole"><option>Warehouse Staff</option><option>Inventory Manager</option></select></label>
+      <label class="field"><span>Password</span><input class="input" id="sPass" type="password" value="••••••••"></label>
+      <button class="btn primary" type="submit" style="justify-content:center">Create account</button>
+    </form></div>`;
+}
+
+/* ---------- Render ---------- */
+function render(){
+  renderNav();
+  const v=document.getElementById("view");
+  const p=state.page;
+  if(state.detail) v.innerHTML=vDetail(state.detail);
+  else if(p==="dashboard") v.innerHTML=vDashboard();
+  else if(p==="products") v.innerHTML=vProducts();
+  else if(p==="receipts") v.innerHTML=vOps("receipt");
+  else if(p==="deliveries") v.innerHTML=vOps("delivery");
+  else if(p==="transfers") v.innerHTML=vOps("internal");
+  else if(p==="adjustments"){v.innerHTML=vOps("adjustment");updAdj()}
+  else if(p==="moves") v.innerHTML=vMoves();
+  else if(p==="warehouses") v.innerHTML=vWarehouses();
+  else if(p==="auth") v.innerHTML=vAuth();
+  else if(p==="themes") v.innerHTML=vThemes();
+  const alerts=PRODUCTS.filter(x=>stockState(x)!=="ok").length;document.getElementById("bellCount").textContent=alerts;
+}
+function updAdj(){
+  const l=document.getElementById("adjLoc"),pr=document.getElementById("adjProd"),c=document.getElementById("adjCount");if(!l)return;
+  const p=prod(pr.value),rec=p.stock[l.value]||0,cnt=Number(c.value||0),d=cnt-rec;
+  document.getElementById("adjRec").textContent=fmt(rec)+" "+p.uom;
+  const el=document.getElementById("adjDiff");el.textContent=(d>0?"+":d<0?"−":"")+fmt(Math.abs(d))+" "+p.uom;el.className="num "+(d>0?"diff-pos":d<0?"diff-neg":"");
+}
+
+/* ---------- Dialog & toast ---------- */
+function confirmBox(title,body,okLabel,onOk){
+  const L=document.getElementById("layer");
+  L.innerHTML=`<div class="scrim"><div class="dialog" role="dialog" aria-modal="true"><h3>${title}</h3><p>${body}</p><div class="actions"><button class="btn" id="dNo">Go back</button><button class="btn primary" id="dYes">${okLabel}</button></div></div></div>`;
+  document.getElementById("dNo").onclick=()=>L.innerHTML="";
+  document.getElementById("dYes").onclick=()=>{L.innerHTML="";onOk()};
+  document.getElementById("dYes").focus();
+}
+let tt;function toast(msg){const L=document.createElement("div");L.className="toast";L.textContent=msg;document.body.appendChild(L);clearTimeout(tt);tt=setTimeout(()=>L.remove(),3200)}
+
+function doAction(o,act){
+  if(act==="cancel") return confirmBox(`Cancel ${o.ref}?`,"The document will be closed. Stock is not affected.","Cancel document",()=>{o.status="canceled";toast(o.ref+" canceled");render()});
+  if(act==="waiting"||act==="ready"){o.status=act;toast(`${o.ref} is now ${act==="ready"&&o.type==="delivery"?"picked & packed":act}`);return render()}
+  if(act==="validate"){
+    const summary=o.lines.map(([s,q])=>`${o.type==="receipt"?"+":o.type==="internal"?"":"−"}${fmt(q)} ${prod(s).uom} ${prod(s).name}`).join(", ");
+    confirmBox(`Validate ${o.ref}?`,`This updates stock right away: ${summary}${o.type==="internal"?` (from ${o.from} to ${o.to})`:""}.`,"Validate",()=>{
+      const now="2026-09-26 "+new Date().toTimeString().slice(0,5);
+      o.lines.forEach(([s,q])=>{const p=prod(s);
+        if(o.type==="receipt"){p.stock[o.to]=(p.stock[o.to]||0)+q;MOVES.unshift({at:now,ref:o.ref,sku:s,from:o.from,to:o.to,qty:q,user:"Riya K."})}
+        else if(o.type==="delivery"){p.stock[o.from]-=q;if(!p.stock[o.from])delete p.stock[o.from];MOVES.unshift({at:now,ref:o.ref,sku:s,from:o.from,to:o.to,qty:-q,user:"Riya K."})}
+        else if(o.type==="internal"){p.stock[o.from]-=q;if(!p.stock[o.from])delete p.stock[o.from];p.stock[o.to]=(p.stock[o.to]||0)+q;MOVES.unshift({at:now,ref:o.ref,sku:s,from:o.from,to:o.to,qty:0,moved:q,user:"Riya K."})}
+      });
+      o.status="done";toast(`${o.ref} validated. Stock updated.`);render();
+    });
+  }
+}
+
+/* ---------- Events ---------- */
+document.addEventListener("click",e=>{
+  const g=e.target.closest("[data-go]");if(g){if(g.dataset.stockfilter){state.prodCat="__alert";state.prodQ=""}else if(g.dataset.go==="products"&&!state.detail&&state.page==="dashboard"){state.prodCat=""}go(g.dataset.go);return}
+  const r=e.target.closest("[data-op]");if(r){go(state.page,OPS.find(o=>o.ref===r.dataset.op));return}
+  const pb=e.target.closest("[data-palette]");if(pb&&pb.tagName==="BUTTON"){applyPalette(pb.dataset.palette);toast(PALETTES.find(x=>x.id===pb.dataset.palette).name+" applied");render();return}
+  const t=e.target.closest("[data-tab]");if(t){state.opsTab=t.dataset.tab;render();return}
+  const a=e.target.closest("[data-act]");if(a&&state.detail){doAction(state.detail,a.dataset.act);return}
+  if(e.target.id==="clearF"){state.dash={type:"",status:"",wh:"",cat:""};render()}
+  if(e.target.id==="adjApply"){const l=document.getElementById("adjLoc").value,p=prod(document.getElementById("adjProd").value),c=Number(document.getElementById("adjCount").value||0),rec=p.stock[l]||0,d=c-rec;
+    if(d===0){toast("Counted quantity matches the record. Nothing to adjust.");return}
+    confirmBox("Apply adjustment?",`${p.name} at ${l} changes from ${fmt(rec)} to ${fmt(c)} ${p.uom} (${d>0?"+":"−"}${fmt(Math.abs(d))}). A ledger entry will be written.`,"Apply",()=>{
+      if(c)p.stock[l]=c;else delete p.stock[l];
+      const n=OPS.filter(o=>o.type==="adjustment").length+1,ref="WH/ADJ/"+String(n+1).padStart(4,"0");
+      OPS.unshift({ref,type:"adjustment",partner:"Physical count",from:l,to:"Inventory Loss",date:"2026-09-26",status:"done",wh:l.split("/")[0],lines:[[p.sku,Math.abs(d)]]});
+      MOVES.unshift({at:"2026-09-26 "+new Date().toTimeString().slice(0,5),ref,sku:p.sku,from:d<0?l:"Inventory Loss",to:d<0?"Inventory Loss":l,qty:d,user:"Riya K."});
+      toast(ref+" applied. Stock updated.");render();
+    })}
+  if(e.target.id==="newOp"||e.target.id==="newProd") toast("In the app this opens the create form.");
+  if(e.target.id==="csv") toast("In the app this downloads the filtered ledger as CSV.");
+  if(e.target.closest("#menuBtn")) document.getElementById("side").classList.toggle("open");
+});
+document.addEventListener("change",e=>{
+  if(e.target.id==="paletteSel"){applyPalette(e.target.value);render();return}
+  const m={fType:"type",fStatus:"status",fWh:"wh",fCat:"cat"}[e.target.id];
+  if(m){state.dash[m]=e.target.value;render()}
+  if(e.target.id==="prodCat"){state.prodCat=e.target.value;render()}
+  if(["adjLoc","adjProd"].includes(e.target.id)) updAdj();
+});
+document.addEventListener("input",e=>{
+  if(e.target.id==="adjCount") updAdj();
+  if(e.target.id==="prodQ"||e.target.id==="moveQ"){const k=e.target.id==="prodQ"?"prodQ":"moveQ";state[k]=e.target.value;const pos=e.target.selectionStart;render();const el=document.getElementById(e.target.id);el.focus();el.setSelectionRange(pos,pos)}
+});
+document.getElementById("globalSearch").addEventListener("keydown",e=>{if(e.key==="Enter"){state.prodQ=e.target.value;state.prodCat="";go("products")}});
+document.getElementById("themeBtn").addEventListener("click",()=>{
+  const r=document.documentElement,cur=r.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  r.setAttribute("data-theme",cur==="dark"?"light":"dark");
+});
+const start=(location.hash||"").slice(1);
+if(NAV.some(n=>n.id===start)) state.page=start;
+render();
+</script>
