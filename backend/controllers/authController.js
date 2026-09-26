@@ -81,6 +81,9 @@ export async function handleVerifyOtp(req, res) {
   }
 }
 
+// In-Memory store for registered users
+const usersStore = new Map();
+
 /**
  * User Sign Up + Welcome Email
  */
@@ -92,6 +95,18 @@ export async function handleSignUp(req, res) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Store user
+    const newUser = {
+      id: 'u-' + Date.now(),
+      name: name || 'Warehouse Lead',
+      email: normalizedEmail,
+      role: role || 'inventory_manager',
+      password, // In real production this would be hashed with bcrypt
+    };
+    usersStore.set(normalizedEmail, newUser);
+
     // Send Welcome Email asynchronously via Nodemailer
     try {
       await sendWelcomeEmail(email, name || 'Team Member', role || 'manager');
@@ -102,12 +117,12 @@ export async function handleSignUp(req, res) {
 
     return res.status(201).json({
       success: true,
-      message: 'Account created successfully.',
+      message: 'Account created successfully. Please sign in with your credentials.',
       user: {
-        id: 'u-' + Date.now(),
-        name: name || 'Warehouse Lead',
-        email,
-        role: role || 'inventory_manager',
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
       },
     });
   } catch (error) {
@@ -115,3 +130,45 @@ export async function handleSignUp(req, res) {
     return res.status(500).json({ success: false, message: 'Signup failed.', error: error.message });
   }
 }
+
+/**
+ * User Sign In
+ */
+export async function handleSignIn(req, res) {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required.' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const existingUser = usersStore.get(normalizedEmail);
+
+    if (existingUser && existingUser.password !== password) {
+      return res.status(400).json({ success: false, message: 'Incorrect password. Please try again.' });
+    }
+
+    const userObj = existingUser || {
+      id: 'u-' + Date.now(),
+      name: normalizedEmail.split('@')[0],
+      email: normalizedEmail,
+      role: 'inventory_manager',
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: 'Logged in successfully.',
+      user: {
+        id: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        role: userObj.role,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Error in login:', error);
+    return res.status(500).json({ success: false, message: 'Login failed.', error: error.message });
+  }
+}
+
